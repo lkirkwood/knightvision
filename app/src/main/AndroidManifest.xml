@@ -1,6 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-feature android:name="android.hardware.camera" android:required="true"/>
+    <uses-permission android:name="android.permission.CAMERA" />
 
-    <application android:label="KnightVision">
+    <application
+        android:label="KnightVision"
+        android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+
+
         <!-- android:icon="@mipmap/ic_launcher"> -->
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
