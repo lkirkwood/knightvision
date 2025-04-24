@@ -6,6 +6,7 @@
     <application
         android:label="KnightVision"
         android:usesCleartextTraffic="true"
+        android:extractNativeLibs="true"
         android:theme="@style/Theme.AppCompat.Light.NoActionBar">
 
 

@@ -2,7 +2,13 @@ package com.knightvision
 
 import java.io.File
 import java.io.IOException
+import java.io.OutputStreamWriter
+import java.io.InputStreamReader
+import java.io.BufferedWriter
+import java.io.BufferedReader
+import java.lang.ProcessBuilder
 import android.os.Bundle
+import android.os.Environment
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.appcompat.app.AppCompatActivity
@@ -23,12 +29,14 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
+import com.knightvision.StockfishBridge
 
 
 @Composable
-fun Analysis(boardFen: String) {
+fun Analysis(boardFen: String, bestMove: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text("Board state FEN: " + boardFen)
+        Text("Best next move: " + bestMove)
     }
 }
 
@@ -59,8 +67,7 @@ class AnalysisActivity : AppCompatActivity() {
             .build()
 
         Thread {
-            var boardFen: String?
-
+            var boardFen: String
             try {
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
@@ -68,22 +75,29 @@ class AnalysisActivity : AppCompatActivity() {
                         throw IOException("Request to extract position from board failed: ${response.body}")
                     }
 
-                    boardFen = response.body?.string()
+                    if (response.body == null) {
+                        Log.e("com.knightvision", "Response from board analyser was empty.")
+                        throw IllegalArgumentException("Response from board analyser was empty.")
+                    }
+
+                    boardFen = response.body!!.string()
                 }
             } catch (exc : Exception) {
                 Log.e("com.knightvision", "Request to extract position from board threw an error: ", exc)
                 throw exc
             }
 
-            if (boardFen == null) {
-                Log.e("com.knightvision", "Extracted board position was null.")
-                throw IllegalArgumentException("Extracted board position was null.")
-            }
-
+            StockfishBridge.initEngine()
+            var output = ""
+            output += StockfishBridge.runCmd("uci")
+            output += StockfishBridge.runCmd("position " + boardFen)
+            output += StockfishBridge.runCmd("go")
+            Thread.sleep(3000)
+            val bestmove = StockfishBridge.bestmove()
+            Log.e("stockfish", bestmove)
             setContent {
-                Analysis(boardFen!!)
+                Analysis(boardFen, bestmove)
             }
         }.start()
-
     }
 }
