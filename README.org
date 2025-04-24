@@ -6,3 +6,11 @@ A chess board photo analysis app.
 Download the two neural network files [[https://tests.stockfishchess.org/nns?network_name=nn-37f18f62d772.nnue][here]] and [[https://tests.stockfishchess.org/nns?network_name=nn-1c0000000000.nnue][here]], and place them in the root of the repo.
 
 Then, just ~gradle build~.
+
+** Emulating
+Check the [[./emulating.md][emulation guide]]. Helper scripts are [[./scripts/install-emu.sh][here]] and [[./scripts/start-emu.sh][here]]. To simulate the image analysis, build and run  the image like so:
+
+#+begin_src: shell
+docker build -f test-server.Containerfile -t <img-name> .
+docker run -p 8080:80 <img-name>
+#+end_src
