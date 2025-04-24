@@ -62,7 +62,7 @@ class AnalysisActivity : AppCompatActivity() {
 
         val client = OkHttpClient()
         val request = Request.Builder()
-            .url( "http://10.0.2.2:8080/parse-board")
+            .url( "http://10.0.2.2:8080/parse-board") // TODO make this configurable or something
             .post(imageBytes.toRequestBody("image/png".toMediaTypeOrNull()))
             .build()
 
@@ -92,11 +92,10 @@ class AnalysisActivity : AppCompatActivity() {
             output += StockfishBridge.runCmd("uci")
             output += StockfishBridge.runCmd("position " + boardFen)
             output += StockfishBridge.runCmd("go")
-            Thread.sleep(3000)
-            val bestmove = StockfishBridge.bestmove()
-            Log.e("stockfish", bestmove)
+            Log.d("com.knightvision - libstockfish", output)
+            Thread.sleep(3000) // TODO definitely make this a slider or add a stop button
             setContent {
-                Analysis(boardFen, bestmove)
+                Analysis(boardFen, StockfishBridge.bestmove())
             }
         }.start()
     }
