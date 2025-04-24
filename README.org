@@ -1,0 +1,10 @@
+#+title: Readme
+
+* KnightVision
+
+A chess board photo analysis app.
+
+** Building
+Download the two neural network files [[https://tests.stockfishchess.org/nns?network_name=nn-37f18f62d772.nnue][here]] and [[https://tests.stockfishchess.org/nns?network_name=nn-1c0000000000.nnue][here]], and place them in the root of the repo.
+
+Then, just ~gradle build~.
