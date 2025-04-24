@@ -6,3 +6,5 @@ tmp/
 .gradle
 *.class
 **/build
+
+app/.cxx
