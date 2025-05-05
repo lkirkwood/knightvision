@@ -58,7 +58,6 @@ import com.knightvision.ui.theme.ChessVisionTheme
 
 
 class MainActivity : ComponentActivity() {
-    private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
     private val CAMERA_PERM_REQUEST_CODE = 42
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,9 +73,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-
-        // Initialize camera provider for later use in ScanBoardScreen
-        cameraProviderFuture = ProcessCameraProvider.getInstance(this)
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
