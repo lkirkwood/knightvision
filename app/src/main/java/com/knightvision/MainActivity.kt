@@ -64,16 +64,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Check and request camera permissions
-        val cameraPerms = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-        if (cameraPerms != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.CAMERA),
-                CAMERA_PERM_REQUEST_CODE
-            )
-        }
-
         setContent {
             ChessVisionTheme {
                 Surface(
