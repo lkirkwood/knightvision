@@ -88,6 +88,7 @@ class MainActivity : ComponentActivity() {
         // Initialize camera provider for later use in ScanBoardScreen
         cameraProviderFuture = ProcessCameraProvider.getInstance(this)
     }
+
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == CAMERA_PERM_REQUEST_CODE) {
