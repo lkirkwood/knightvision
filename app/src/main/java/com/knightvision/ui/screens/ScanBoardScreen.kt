@@ -58,14 +58,18 @@ fun ScanBoardScreen(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasCameraPermission = isGranted
+        preview = Preview.Builder().build()
+    }
+
+    LaunchedEffect(Unit) {
+        if (!hasCameraPermission) {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
     }
 
     LaunchedEffect(hasCameraPermission) {
         if (hasCameraPermission) {
             val cameraProvider = cameraProviderFuture.get()
-            val cameraPreview = Preview.Builder().build()
-            preview = cameraPreview
-
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
             try {
@@ -76,7 +80,7 @@ fun ScanBoardScreen(
                 cameraProvider.bindToLifecycle(
                     lifecycleOwner,
                     cameraSelector,
-                    cameraPreview
+                    preview
                 )
             } catch(ex: Exception) {
                 Log.e("CameraPreview", "Failed to bind camera use cases", ex)
@@ -138,6 +142,9 @@ fun ScanBoardScreen(
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT
                         )
+
+                        preview!!.setSurfaceProvider(previewView.surfaceProvider)
+
                         previewView
                     }
 
