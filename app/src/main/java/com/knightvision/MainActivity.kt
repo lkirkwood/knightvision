@@ -152,11 +152,6 @@ fun ChessVisionApp() {
             )
         }
 
-        // Other screens would be defined here
-        composable("scan") {
-            // Placeholder for the scan screen
-            ScanBoardScreen()
-        }
 
         composable("previous") {
             // Placeholder for the previous analysis screen
