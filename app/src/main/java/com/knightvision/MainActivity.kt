@@ -146,6 +146,11 @@ fun ChessVisionApp() {
                 onSettingsClick = { navController.navigate("settings") }
             )
         }
+        composable("scan") {
+            ScanBoardScreen(
+                onBackClick = { navController.popBackStack() }
+            )
+        }
 
         // Other screens would be defined here
         composable("scan") {
@@ -162,6 +167,7 @@ fun ChessVisionApp() {
             // Placeholder for the settings screen
             PlaceholderScreen("Settings Screen")
         }
+
     }
 }
 
