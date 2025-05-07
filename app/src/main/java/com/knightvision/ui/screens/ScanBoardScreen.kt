@@ -34,11 +34,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.camera.view.PreviewView
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.lifecycle.LifecycleOwner
 
 @Composable
 fun ScanBoardScreen(
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onPictureTaken: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalContext.current as LifecycleOwner
@@ -69,19 +72,20 @@ fun ScanBoardScreen(
 
     LaunchedEffect(hasCameraPermission) {
         if (hasCameraPermission) {
-            val cameraProvider = cameraProviderFuture.get()
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+            try{
+                val cameraProvider = cameraProviderFuture.get()
+                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-            try {
-                // Unbind any previous use cases first
-                cameraProvider.unbindAll()
 
-                // Bind use cases to camera
-                cameraProvider.bindToLifecycle(
-                    lifecycleOwner,
-                    cameraSelector,
-                    preview
-                )
+                    // Unbind any previous use cases first
+                    cameraProvider.unbindAll()
+
+                    // Bind use cases to camera
+                    cameraProvider.bindToLifecycle(
+                        lifecycleOwner,
+                        cameraSelector,
+                        preview
+                    )
             } catch(ex: Exception) {
                 Log.e("CameraPreview", "Failed to bind camera use cases", ex)
             }
@@ -108,7 +112,7 @@ fun ScanBoardScreen(
             ) {
                 IconButton(onClick = onBackClick) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = Color.White
                     )
@@ -119,8 +123,8 @@ fun ScanBoardScreen(
                 Text(
                     text = "Scan Board",
                     color = Color.White,
-                    fontSize = 20.sp, // Same size as "KnightVision"
-                    fontWeight = FontWeight.Bold // Same weight
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
@@ -142,8 +146,9 @@ fun ScanBoardScreen(
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT
                         )
-
-                        preview!!.setSurfaceProvider(previewView.surfaceProvider)
+                        if(preview != null){
+                            preview!!.setSurfaceProvider(previewView.surfaceProvider)
+                        }
 
                         previewView
                     }
