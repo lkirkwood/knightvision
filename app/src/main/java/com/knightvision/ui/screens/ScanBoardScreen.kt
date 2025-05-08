@@ -78,14 +78,14 @@ fun ScanBoardScreen(
 
 
                     // Unbind any previous use cases first
-                    cameraProvider.unbindAll()
+                cameraProvider.unbindAll()
 
                     // Bind use cases to camera
-                    cameraProvider.bindToLifecycle(
-                        lifecycleOwner,
-                        cameraSelector,
-                        preview
-                    )
+                cameraProvider.bindToLifecycle(
+                    lifecycleOwner,
+                    cameraSelector,
+                    preview
+                )
             } catch(ex: Exception) {
                 Log.e("CameraPreview", "Failed to bind camera use cases", ex)
             }

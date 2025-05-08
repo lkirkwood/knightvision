@@ -24,7 +24,8 @@ fun KnightVisionApp() {
     WelcomeScreen(
         onScanBoardClick = {},
         onPreviousAnalysisClick = {},
-        onSettingsClick = {}
+        onSettingsClick = {},
+        onDirectToBoardDetectionClick = {}
     )
 }
 
@@ -32,7 +33,8 @@ fun KnightVisionApp() {
 fun WelcomeScreen(
     onScanBoardClick: () -> Unit,
     onPreviousAnalysisClick: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onDirectToBoardDetectionClick: () -> Unit
 ) {
 
 
@@ -72,6 +74,31 @@ fun WelcomeScreen(
                     color = Color.White
                 )
             }
+            Button(
+                    onClick = { onDirectToBoardDetectionClick() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(28.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF4D4B6E)
+            )
+            ) {
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = "Direct to Board Detection",
+                tint = Color.White
+            )
+            Spacer(modifier = Modifier.width(32.dp))
+            Text(
+                text = "Direct to Board Detection",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White
+            )
+        }
+
+            Spacer(modifier = Modifier.height(32.dp))
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -252,6 +279,7 @@ fun WelcomeScreenPreview() {
     WelcomeScreen(
         onScanBoardClick = {},
         onPreviousAnalysisClick = {},
-        onSettingsClick = {}
+        onSettingsClick = {},
+        onDirectToBoardDetectionClick = {}
     )
 }

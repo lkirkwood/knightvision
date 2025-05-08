@@ -51,6 +51,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.knightvision.ui.screens.AnalysisScreen
 import com.knightvision.ui.screens.ScanBoardScreen
 import com.knightvision.ui.screens.BoardDetectionScreen
 import com.knightvision.ui.screens.WelcomeScreen
@@ -143,7 +144,8 @@ fun ChessVisionApp() {
             WelcomeScreen(
                 onScanBoardClick = { navController.navigate("scan") },
                 onPreviousAnalysisClick = { navController.navigate("previous") },
-                onSettingsClick = { navController.navigate("settings") }
+                onSettingsClick = { navController.navigate("settings") },
+                onDirectToBoardDetectionClick = {navController.navigate("boardDetection")}
             )
         }
         composable("scan") {
@@ -151,6 +153,18 @@ fun ChessVisionApp() {
                 onBackClick = { navController.popBackStack() }
             )
         }
+        composable("boardDetection"){
+            BoardDetectionScreen(
+                onBackClick = { navController.popBackStack() },
+                onAnalyseClick = {navController.navigate("analyse")}
+            )
+        }
+        composable("analyse") {
+            AnalysisScreen(
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
 
 
         composable("previous") {
