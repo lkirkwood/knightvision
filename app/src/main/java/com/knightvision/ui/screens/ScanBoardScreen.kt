@@ -22,6 +22,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +38,25 @@ import androidx.camera.view.PreviewView
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.lifecycle.LifecycleOwner
+import com.google.common.util.concurrent.ListenableFuture
+
+fun setupCamera(cameraProvider: ProcessCameraProvider, lifecycleOwner: LifecycleOwner, preview: Preview) {
+    try{
+        val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+        // Unbind any previous use cases first
+        cameraProvider.unbindAll()
+
+        // Bind use cases to camera
+        cameraProvider.bindToLifecycle(
+            lifecycleOwner,
+            cameraSelector,
+            preview
+        )
+    } catch(ex: Exception) {
+        Log.e("CameraPreview", "Failed to bind camera use cases", ex)
+    }
+}
 
 @Composable
 fun ScanBoardScreen(
@@ -45,6 +65,8 @@ fun ScanBoardScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalContext.current as LifecycleOwner
+    val executor = ContextCompat.getMainExecutor(context)
+
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -53,15 +75,28 @@ fun ScanBoardScreen(
             ) == PackageManager.PERMISSION_GRANTED
         )
     }
-    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-    var preview by remember { mutableStateOf<Preview?>(null) }
 
-    // Request camera permission
+    var cameraProviderReady by remember { mutableStateOf(false) }
+    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
+    cameraProviderFuture.addListener({ cameraProviderReady = true }, executor)
+
+
+    var cameraPreview by remember {
+        if (hasCameraPermission) {
+            mutableStateOf<Preview?>(Preview.Builder().build())
+        } else {
+            mutableStateOf<Preview?>(null)
+        }
+    }
+    val previewView = remember { PreviewView(context) }
+
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasCameraPermission = isGranted
-        preview = Preview.Builder().build()
+        // Only gets launched if permission was false when composable was entered first time,
+        // so we know we have to create preview
+        cameraPreview = Preview.Builder().build()
     }
 
     LaunchedEffect(Unit) {
@@ -70,24 +105,18 @@ fun ScanBoardScreen(
         }
     }
 
-    LaunchedEffect(hasCameraPermission) {
-        if (hasCameraPermission) {
-            try{
-                val cameraProvider = cameraProviderFuture.get()
-                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+    var cameraBound by remember { mutableStateOf(false) }
+    LaunchedEffect(cameraPreview, cameraProviderReady) {
+        if (cameraProviderReady && cameraPreview != null) {
+            setupCamera(cameraProviderFuture.get(), lifecycleOwner, cameraPreview!!)
+            cameraBound = true
+        }
+    }
 
-
-                    // Unbind any previous use cases first
-                    cameraProvider.unbindAll()
-
-                    // Bind use cases to camera
-                    cameraProvider.bindToLifecycle(
-                        lifecycleOwner,
-                        cameraSelector,
-                        preview
-                    )
-            } catch(ex: Exception) {
-                Log.e("CameraPreview", "Failed to bind camera use cases", ex)
+    DisposableEffect(Unit) {
+        onDispose {
+            if (cameraBound) {
+                cameraProviderFuture.get().unbindAll()
             }
         }
     }
@@ -137,26 +166,12 @@ fun ScanBoardScreen(
                 .background(Color(0xFFF5F5F5)),
             contentAlignment = Alignment.Center
         ) {
-            if (hasCameraPermission) {
-                AndroidView(
-                    modifier = Modifier.fillMaxSize(),
-                    factory = { ctx ->
-                        val previewView = PreviewView(ctx)
-                        previewView.layoutParams = ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        )
-                        if(preview != null){
-                            preview!!.setSurfaceProvider(previewView.surfaceProvider)
-                        }
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { previewView }
 
-                        previewView
-                    }
-
-                )
-            } else {
-                Text("Camera Permission Required") // need to add permission prompt again
-
+            ) {
+                cameraPreview?.setSurfaceProvider(previewView.surfaceProvider)
             }
 
             // Instruction Text
@@ -183,7 +198,8 @@ fun ScanBoardScreen(
                         .border(2.dp, Color(0xFF4D4B6E), CircleShape)
                         .clickable {
                             if (!hasCameraPermission) {
-                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                // cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                // we immediately ask for permission so don't need this here
                             }
                         }
                         .padding(4.dp),
