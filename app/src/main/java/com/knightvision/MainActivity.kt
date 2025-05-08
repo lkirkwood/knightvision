@@ -88,6 +88,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ChessVisionApp() {
     val navController = rememberNavController()
+    var boardImage by remember { mutableStateOf<Bitmap?>(null) }
 
     NavHost(navController = navController, startDestination = "welcome") {
         composable("welcome") {
@@ -99,13 +100,14 @@ fun ChessVisionApp() {
         }
 
         composable("board-detection") {
-            PlaceholderScreen("board detection screen")
+            BoardDetectionScreen(boardImage)
         }
 
         composable("scan") {
             ScanBoardScreen(
                 onBackClick = { navController.popBackStack() },
-                onPictureTaken = {image: ImageProxy ->
+                onPictureTaken = {image: Bitmap ->
+                    boardImage = image
                     navController.navigate("board-detection")
                 }
             )

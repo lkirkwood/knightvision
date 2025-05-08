@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.Toast
 import android.os.Handler
 import android.os.Looper
+import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -73,7 +74,7 @@ fun setupCamera(
 @Composable
 fun ScanBoardScreen(
     onBackClick: () -> Unit = {},
-    onPictureTaken: (ImageProxy) -> Unit = {}
+    onPictureTaken: (Bitmap) -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalContext.current as LifecycleOwner
@@ -224,7 +225,7 @@ fun ScanBoardScreen(
                             cameraCapture.takePicture(cameraExecutor, object : ImageCapture.OnImageCapturedCallback() {
                                 override fun onCaptureSuccess(image : ImageProxy) {
                                     Handler(Looper.getMainLooper()).post {
-                                        onPictureTaken(image)
+                                        onPictureTaken(image.toBitmap())
                                     }
                                 }
 
