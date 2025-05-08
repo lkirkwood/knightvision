@@ -5,16 +5,23 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
 import android.view.ViewGroup
+import android.widget.Toast
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.ImageCaptureException
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Icon
@@ -190,6 +197,16 @@ fun ScanBoardScreen(
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            // Grid overlay
+            Image(
+                painter = painterResource(id = R.drawable.grid),
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth(),
+                alignment = Alignment.Center,
+                alpha = 1.0f,
+                contentScale = ContentScale.FillWidth,
             )
 
             // Camera capture button
