@@ -146,12 +146,19 @@ fun ChessVisionApp() {
                 onSettingsClick = { navController.navigate("settings") }
             )
         }
-        composable("scan") {
-            ScanBoardScreen(
-                onBackClick = { navController.popBackStack() }
-            )
+
+        composable("board-detection") {
+            PlaceholderScreen("board detection screen")
         }
 
+        composable("scan") {
+            ScanBoardScreen(
+                onBackClick = { navController.popBackStack() },
+                onPictureTaken = {image: ImageProxy ->
+                    navController.navigate("board-detection")
+                }
+            )
+        }
 
         composable("previous") {
             // Placeholder for the previous analysis screen
@@ -162,7 +169,6 @@ fun ChessVisionApp() {
             // Placeholder for the settings screen
             PlaceholderScreen("Settings Screen")
         }
-
     }
 }
 
