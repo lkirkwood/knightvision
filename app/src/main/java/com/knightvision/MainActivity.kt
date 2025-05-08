@@ -86,55 +86,6 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun CameraPreview(cameraProvider : ProcessCameraProvider, onPictureTaken : (ImageProxy) -> Unit) {
-    val capture = ImageCapture.Builder().build()
-
-    AndroidView(
-        factory = { context ->
-            val previewView = PreviewView(context).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-                scaleType = PreviewView.ScaleType.FILL_CENTER
-            }
-
-            val preview = Preview.Builder().build()
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-            preview.setSurfaceProvider(previewView.surfaceProvider)
-
-            cameraProvider.unbindAll()
-            cameraProvider.bindToLifecycle(
-                context as LifecycleOwner,
-                cameraSelector,
-                preview,
-                capture
-            )
-
-            previewView
-        }
-    )
-
-    val cameraExecutor = Executors.newSingleThreadExecutor()
-    val context = LocalContext.current
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        OutlinedButton(shape = CircleShape, onClick = {
-            capture.takePicture(cameraExecutor, object : ImageCapture.OnImageCapturedCallback() {
-                override fun onCaptureSuccess(image : ImageProxy) {
-                    onPictureTaken(image)
-                }
-
-                override fun onError(exception : ImageCaptureException) {
-                    Toast.makeText(context, exception.toString(), Toast.LENGTH_LONG).show()
-                }
-            })
-        }) {}
-    }
-}
-
-
-@Composable
 fun ChessVisionApp() {
     val navController = rememberNavController()
 
