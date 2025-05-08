@@ -46,9 +46,10 @@ dependencies {
     implementation("androidx.compose.material:material:1.5.0")
     implementation("androidx.compose.ui:ui-tooling-preview:1.5.0")
     implementation("androidx.navigation:navigation-compose:2.8.9")
-    debugImplementation("androidx.compose.ui:ui-tooling:1.5.0")
     implementation("androidx.activity:activity-compose:1.8.0")
     implementation("androidx.compose.material3:material3:1.3.2")
+    implementation(platform("androidx.compose:compose-bom:2025.04.01"))
+    debugImplementation("androidx.compose.ui:ui-tooling:1.5.0")
 
     // Camera
     implementation("androidx.camera:camera-core:1.3.0")
