@@ -33,25 +33,30 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.core.content.ContextCompat
 import androidx.camera.view.PreviewView
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.lifecycle.LifecycleOwner
 import com.google.common.util.concurrent.ListenableFuture
+import java.util.concurrent.Executors
+import com.knightvision.R
 
-fun setupCamera(cameraProvider: ProcessCameraProvider, lifecycleOwner: LifecycleOwner, preview: Preview) {
+fun setupCamera(
+    provider: ProcessCameraProvider, capture: ImageCapture, lifecycleOwner: LifecycleOwner, preview: Preview
+) {
     try{
-        val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
         // Unbind any previous use cases first
-        cameraProvider.unbindAll()
+        provider.unbindAll()
 
         // Bind use cases to camera
-        cameraProvider.bindToLifecycle(
+        provider.bindToLifecycle(
             lifecycleOwner,
-            cameraSelector,
-            preview
+            CameraSelector.DEFAULT_BACK_CAMERA,
+            preview,
+            capture
         )
     } catch(ex: Exception) {
         Log.e("CameraPreview", "Failed to bind camera use cases", ex)
@@ -61,11 +66,13 @@ fun setupCamera(cameraProvider: ProcessCameraProvider, lifecycleOwner: Lifecycle
 @Composable
 fun ScanBoardScreen(
     onBackClick: () -> Unit = {},
-    onPictureTaken: () -> Unit = {}
+    onPictureTaken: (ImageProxy) -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalContext.current as LifecycleOwner
-    val executor = ContextCompat.getMainExecutor(context)
+
+    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+    val cameraCapture = remember { ImageCapture.Builder().build() }
 
     var hasCameraPermission by remember {
         mutableStateOf(
@@ -78,7 +85,7 @@ fun ScanBoardScreen(
 
     var cameraProviderReady by remember { mutableStateOf(false) }
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-    cameraProviderFuture.addListener({ cameraProviderReady = true }, executor)
+    cameraProviderFuture.addListener({ cameraProviderReady = true }, cameraExecutor)
 
 
     var cameraPreview by remember {
@@ -108,7 +115,7 @@ fun ScanBoardScreen(
     var cameraBound by remember { mutableStateOf(false) }
     LaunchedEffect(cameraPreview, cameraProviderReady) {
         if (cameraProviderReady && cameraPreview != null) {
-            setupCamera(cameraProviderFuture.get(), lifecycleOwner, cameraPreview!!)
+            setupCamera(cameraProviderFuture.get(), cameraCapture, lifecycleOwner, cameraPreview!!)
             cameraBound = true
         }
     }
@@ -197,10 +204,17 @@ fun ScanBoardScreen(
                         .clip(CircleShape)
                         .border(2.dp, Color(0xFF4D4B6E), CircleShape)
                         .clickable {
-                            if (!hasCameraPermission) {
-                                // cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                                // we immediately ask for permission so don't need this here
-                            }
+                            cameraCapture.takePicture(cameraExecutor, object : ImageCapture.OnImageCapturedCallback() {
+                                override fun onCaptureSuccess(image : ImageProxy) {
+                                    Handler(Looper.getMainLooper()).post {
+                                        onPictureTaken(image)
+                                    }
+                                }
+
+                                override fun onError(exception : ImageCaptureException) {
+                                    Toast.makeText(context, exception.toString(), Toast.LENGTH_LONG).show()
+                                }
+                            })
                         }
                         .padding(4.dp),
                     contentAlignment = Alignment.Center
