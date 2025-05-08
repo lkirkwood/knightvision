@@ -194,10 +194,12 @@ fun ScanBoardScreen(
                 text = "Center the chessboard within the frame and ensure all pieces are clearly visible",
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(24.dp),
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .padding(12.dp),
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = Color.White,
+                fontWeight = FontWeight.Bold
             )
 
             // Grid overlay
