@@ -144,13 +144,13 @@ fun ChessVisionApp() {
             WelcomeScreen(
                 onScanBoardClick = { navController.navigate("scan") },
                 onPreviousAnalysisClick = { navController.navigate("previous") },
-                onSettingsClick = { navController.navigate("settings") },
-                onDirectToBoardDetectionClick = {navController.navigate("boardDetection")}
+                onSettingsClick = { navController.navigate("settings") }
             )
         }
         composable("scan") {
             ScanBoardScreen(
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                onPictureTaken = { navController.navigate("boardDetection") }
             )
         }
         composable("boardDetection"){

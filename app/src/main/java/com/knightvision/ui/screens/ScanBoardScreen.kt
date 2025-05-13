@@ -182,7 +182,9 @@ fun ScanBoardScreen(
                         .clip(CircleShape)
                         .border(2.dp, Color(0xFF4D4B6E), CircleShape)
                         .clickable {
-                            if (!hasCameraPermission) {
+                            if (hasCameraPermission) {
+                                onPictureTaken()
+                            } else {
                                 cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                             }
                         }
