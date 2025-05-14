@@ -19,6 +19,8 @@ object StockfishBridge {
         val pointers = _initEngine()
         enginePtr = pointers[0]
         bestmoveOutputPtr = pointers[1]
+
+        runCmd("setoption name Threads value 1")
     }
 
     // TODO add thread safety to this object
