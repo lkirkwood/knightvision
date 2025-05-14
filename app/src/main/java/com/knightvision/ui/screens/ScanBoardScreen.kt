@@ -5,16 +5,24 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
 import android.view.ViewGroup
+import android.widget.Toast
+import android.os.Handler
+import android.os.Looper
+import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.ImageCaptureException
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Icon
@@ -22,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,19 +41,47 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.core.content.ContextCompat
 import androidx.camera.view.PreviewView
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.lifecycle.LifecycleOwner
+import com.google.common.util.concurrent.ListenableFuture
+import java.util.concurrent.Executors
+import com.knightvision.R
+
+fun setupCamera(
+    provider: ProcessCameraProvider, capture: ImageCapture, lifecycleOwner: LifecycleOwner, preview: Preview
+) {
+    try{
+        // Unbind any previous use cases first
+        provider.unbindAll()
+
+        // Bind use cases to camera
+        provider.bindToLifecycle(
+            lifecycleOwner,
+            CameraSelector.DEFAULT_BACK_CAMERA,
+            preview,
+            capture
+        )
+    } catch(ex: Exception) {
+        Log.e("CameraPreview", "Failed to bind camera use cases", ex)
+    }
+}
 
 @Composable
 fun ScanBoardScreen(
     onBackClick: () -> Unit = {},
-    onPictureTaken: () -> Unit = {}
+    onPictureTaken: (Bitmap) -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalContext.current as LifecycleOwner
+
+    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+    val cameraCapture = remember { ImageCapture.Builder().build() }
+
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -53,15 +90,28 @@ fun ScanBoardScreen(
             ) == PackageManager.PERMISSION_GRANTED
         )
     }
-    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-    var preview by remember { mutableStateOf<Preview?>(null) }
 
-    // Request camera permission
+    var cameraProviderReady by remember { mutableStateOf(false) }
+    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
+    cameraProviderFuture.addListener({ cameraProviderReady = true }, cameraExecutor)
+
+
+    var cameraPreview by remember {
+        if (hasCameraPermission) {
+            mutableStateOf<Preview?>(Preview.Builder().build())
+        } else {
+            mutableStateOf<Preview?>(null)
+        }
+    }
+    val previewView = remember { PreviewView(context) }
+
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasCameraPermission = isGranted
-        preview = Preview.Builder().build()
+        // Only gets launched if permission was false when composable was entered first time,
+        // so we know we have to create preview
+        cameraPreview = Preview.Builder().build()
     }
 
     LaunchedEffect(Unit) {
@@ -70,24 +120,18 @@ fun ScanBoardScreen(
         }
     }
 
-    LaunchedEffect(hasCameraPermission) {
-        if (hasCameraPermission) {
-            try{
-                val cameraProvider = cameraProviderFuture.get()
-                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+    var cameraBound by remember { mutableStateOf(false) }
+    LaunchedEffect(cameraPreview, cameraProviderReady) {
+        if (cameraProviderReady && cameraPreview != null) {
+            setupCamera(cameraProviderFuture.get(), cameraCapture, lifecycleOwner, cameraPreview!!)
+            cameraBound = true
+        }
+    }
 
-
-                    // Unbind any previous use cases first
-                cameraProvider.unbindAll()
-
-                    // Bind use cases to camera
-                cameraProvider.bindToLifecycle(
-                    lifecycleOwner,
-                    cameraSelector,
-                    preview
-                )
-            } catch(ex: Exception) {
-                Log.e("CameraPreview", "Failed to bind camera use cases", ex)
+    DisposableEffect(Unit) {
+        onDispose {
+            if (cameraBound) {
+                cameraProviderFuture.get().unbindAll()
             }
         }
     }
@@ -137,26 +181,12 @@ fun ScanBoardScreen(
                 .background(Color(0xFFF5F5F5)),
             contentAlignment = Alignment.Center
         ) {
-            if (hasCameraPermission) {
-                AndroidView(
-                    modifier = Modifier.fillMaxSize(),
-                    factory = { ctx ->
-                        val previewView = PreviewView(ctx)
-                        previewView.layoutParams = ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        )
-                        if(preview != null){
-                            preview!!.setSurfaceProvider(previewView.surfaceProvider)
-                        }
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { previewView }
 
-                        previewView
-                    }
-
-                )
-            } else {
-                Text("Camera Permission Required") // need to add permission prompt again
-
+            ) {
+                cameraPreview?.setSurfaceProvider(previewView.surfaceProvider)
             }
 
             // Instruction Text
@@ -164,10 +194,22 @@ fun ScanBoardScreen(
                 text = "Center the chessboard within the frame and ensure all pieces are clearly visible",
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(24.dp),
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .padding(12.dp),
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+
+            // Grid overlay
+            Image(
+                painter = painterResource(id = R.drawable.grid),
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth(),
+                alignment = Alignment.Center,
+                alpha = 1.0f,
+                contentScale = ContentScale.FillWidth,
             )
 
             // Camera capture button
@@ -182,11 +224,17 @@ fun ScanBoardScreen(
                         .clip(CircleShape)
                         .border(2.dp, Color(0xFF4D4B6E), CircleShape)
                         .clickable {
-                            if (hasCameraPermission) {
-                                onPictureTaken()
-                            } else {
-                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                            }
+                            cameraCapture.takePicture(cameraExecutor, object : ImageCapture.OnImageCapturedCallback() {
+                                override fun onCaptureSuccess(image : ImageProxy) {
+                                    Handler(Looper.getMainLooper()).post {
+                                        onPictureTaken(image.toBitmap())
+                                    }
+                                }
+
+                                override fun onError(exception : ImageCaptureException) {
+                                    Toast.makeText(context, exception.toString(), Toast.LENGTH_LONG).show()
+                                }
+                            })
                         }
                         .padding(4.dp),
                     contentAlignment = Alignment.Center
