@@ -20,30 +20,85 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.graphics.Bitmap
+import android.util.Log
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+
+import com.knightvision.StockfishBridge
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+
+const val ANALYSIS_SERVER = "http://10.0.2.2:8080/parse-board"
+const val STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+
+suspend fun analyseImage(client: OkHttpClient, image: Bitmap): String = withContext(Dispatchers.IO) {
+    try {
+        val imageBytes = ByteArrayOutputStream()
+        image.compress(Bitmap.CompressFormat.JPEG, 100, imageBytes)
+        val request = Request.Builder()
+            .url(ANALYSIS_SERVER) // TODO make this configurable or something
+            .post(imageBytes.toByteArray().toRequestBody("image/png".toMediaTypeOrNull()))
+            .build()
+
+        val responseBody = client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                Log.e("com.knightvision", "Request to extract position from board failed: ${response.body}")
+                throw IOException("Request to extract position from board failed: ${response.body}")
+            }
+
+            if (response.body == null) {
+                Log.e("com.knightvision", "Response from board analyser was empty.")
+                throw IllegalArgumentException("Response from board analyser was empty.")
+            }
+
+            response.body!!.string()
+        }
+        responseBody
+
+    } catch (exc : Exception) {
+        Log.e("com.knightvision", "Request to extract position from board threw an error: ", exc)
+        throw exc
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BoardDetectionScreen(
     onBackClick: () -> Unit = {},
-    imageUri: String = "",
-    onAnalyseClick: () -> Unit = {},
+    boardImage: Bitmap?,
+    onAnalyseClick: (String) -> Unit,
     onEditBoardClick: () -> Unit = {},
-    fenString: String = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR" // Default starting position
 ) {
+    var boardFen by remember { mutableStateOf<String>(STARTING_FEN) }
 
-    LaunchedEffect(imageUri) {
-        if (imageUri.isNotEmpty()){
-            // process image here
+    val stockfish = StockfishBridge
+    LaunchedEffect(Unit) {
+        stockfish.initEngine()
+    }
+
+    LaunchedEffect(boardImage) {
+        if (boardImage != null) {
+            boardFen = analyseImage(OkHttpClient(), boardImage)
         }
     }
+
+
+    var boardState = remember(boardFen) { parseFenToBoard(boardFen) }
+    LaunchedEffect(boardFen) {
+        boardState = parseFenToBoard(boardFen)
+    }
+
     // State for board information
     var detectedOpening by remember { mutableStateOf("Starting Position") }
     var piecesDetected by remember { mutableStateOf("32/32") }
     var evaluation by remember { mutableStateOf("") }
     var advantage by remember { mutableStateOf("Equal") }
 
-    // Parse FEN to determine board state
-    val boardState = remember(fenString) { parseFenToBoard(fenString) }
 
     Column(
         modifier = Modifier
@@ -175,7 +230,7 @@ fun BoardDetectionScreen(
 
             // Action Buttons
             Button(
-                onClick = onAnalyseClick,
+                onClick = { -> onAnalyseClick(boardFen) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
