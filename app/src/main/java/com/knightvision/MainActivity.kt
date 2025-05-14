@@ -51,6 +51,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.knightvision.ui.screens.AnalysisScreen
 import com.knightvision.ui.screens.ScanBoardScreen
 import com.knightvision.ui.screens.BoardDetectionScreen
 import com.knightvision.ui.screens.WelcomeScreen
@@ -98,21 +99,30 @@ fun ChessVisionApp() {
                 onSettingsClick = { navController.navigate("settings") }
             )
         }
-
-        composable("board-detection") {
-            BoardDetectionScreen(boardImage)
-        }
-
+        
         composable("scan") {
             ScanBoardScreen(
                 onBackClick = { navController.popBackStack() },
                 onPictureTaken = {image: Bitmap ->
                     boardImage = image
-                    navController.navigate("board-detection")
+                    navController.navigate("boardDetection")
                 }
             )
         }
-
+        
+        composable("boardDetection"){
+            BoardDetectionScreen(
+                onBackClick = { navController.popBackStack() },
+                onAnalyseClick = {navController.navigate("analyse")}
+            )
+        }
+        
+        composable("analyse") {
+            AnalysisScreen(
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+        
         composable("previous") {
             // Placeholder for the previous analysis screen
             PlaceholderScreen("Previous Analysis Screen")

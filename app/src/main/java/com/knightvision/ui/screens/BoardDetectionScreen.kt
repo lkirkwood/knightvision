@@ -1,118 +1,346 @@
 package com.knightvision.ui.screens
 
-import androidx.camera.core.ImageProxy
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.material3.Text
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.material.MaterialTheme
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import android.graphics.Bitmap
-import android.util.Log
-import android.widget.Toast
-import java.io.ByteArrayOutputStream
-import java.io.IOException
 
-import com.knightvision.StockfishBridge
-import com.knightvision.ui.screens.analyseImage
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BoardDetectionScreen(
+    onBackClick: () -> Unit = {},
+    imageUri: String = "",
+    onAnalyseClick: () -> Unit = {},
+    onEditBoardClick: () -> Unit = {},
+    fenString: String = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR" // Default starting position
+) {
 
-fun analyseImage(client: OkHttpClient, image: Bitmap): String {
-    try {
-        val imageBytes = ByteArrayOutputStream()
-        image.compress(Bitmap.CompressFormat.JPEG, 100, imageBytes)
-        val request = Request.Builder()
-            .url( "http://10.0.2.2:8080/parse-board") // TODO make this configurable or something
-            .post(imageBytes.toByteArray().toRequestBody("image/png".toMediaTypeOrNull()))
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                Log.e("com.knightvision", "Request to extract position from board failed: ${response.body}")
-                throw IOException("Request to extract position from board failed: ${response.body}")
-            }
-
-            if (response.body == null) {
-                Log.e("com.knightvision", "Response from board analyser was empty.")
-                throw IllegalArgumentException("Response from board analyser was empty.")
-            }
-
-            return response.body!!.string()
+    LaunchedEffect(imageUri) {
+        if (imageUri.isNotEmpty()){
+            // process image here
         }
-    } catch (exc : Exception) {
-        Log.e("com.knightvision", "Request to extract position from board threw an error: ", exc)
-        throw exc
+    }
+    // State for board information
+    var detectedOpening by remember { mutableStateOf("Starting Position") }
+    var piecesDetected by remember { mutableStateOf("32/32") }
+    var evaluation by remember { mutableStateOf("") }
+    var advantage by remember { mutableStateOf("Equal") }
+
+    // Parse FEN to determine board state
+    val boardState = remember(fenString) { parseFenToBoard(fenString) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF5F5F5))
+    ) {
+        // Top App Bar
+        TopAppBar(
+            title = { Text("Board Detection") },
+            navigationIcon = {
+                IconButton(onClick = onBackClick) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
+                }
+            },
+
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = Color(0xFF4D4B6E),
+                titleContentColor = Color.White
+            )
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Detected Position Label
+            Text(
+                text = "Detected Position:",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.DarkGray,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            )
+
+            // Chess Board
+            ChessBoard(
+                boardState = boardState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Position Information Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                shape = RoundedCornerShape(8.dp),
+                elevation = CardDefaults.cardElevation(4.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Detected Opening:",
+                            fontSize = 14.sp,
+                            color = Color.DarkGray
+                        )
+                        Text(
+                            text = detectedOpening,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Pieces detected:",
+                            fontSize = 14.sp,
+                            color = Color.DarkGray
+                        )
+                        Text(
+                            text = piecesDetected,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Position evaluation:",
+                            fontSize = 14.sp,
+                            color = Color.DarkGray
+                        )
+                        Text(
+                            text = "$evaluation $advantage",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Action Buttons
+            Button(
+                onClick = onAnalyseClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(28.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF4D4B6E)
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "Analyse Position Icon",
+                    tint = Color.White
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Analyse Position",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedButton(
+                onClick = onEditBoardClick, // TODO: add edit board screen
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(28.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color(0xFF4D4B6E)
+                ),
+                border = ButtonDefaults.outlinedButtonBorder.copy(
+                    brush = androidx.compose.ui.graphics.SolidColor(Color(0xFF4D4B6E))
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Edit Board Icon",
+                    tint = Color(0xFF4D4B6E)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Edit Board",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF4D4B6E)
+                )
+            }
+        }
     }
 }
 
-const val STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+@Composable
+fun ChessBoard(
+    boardState: Array<Array<Char>>,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        for (row in 0..7) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                for (col in 0..7) {
+                    ChessSquare(
+                        piece = boardState[row][col],
+                        isLightSquare = (row + col) % 2 == 0,
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f)
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
-fun BoardDetectionScreen(image: Bitmap?) {
-    if (image == null) {
-        throw IllegalStateException("BoardDetectionScreen entered with null image value.")
+fun ChessSquare(
+    piece: Char,
+    isLightSquare: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .background(if (isLightSquare) Color(0xFFE8D0AA) else Color(0xFFB58863)),
+        contentAlignment = Alignment.Center
+    ) {
+        if (piece != '.') {
+            ChessPiece(piece = piece)
+        }
+    }
+}
+
+@Composable
+fun ChessPiece(piece: Char) {
+    // unicode chess symbols
+    val isWhitePiece = piece.isUpperCase()
+    val pieceSymbol = when (piece.lowercaseChar()) {
+        'p' -> "♟"
+        'r' -> "♜"
+        'n' -> "♞"
+        'b' -> "♝"
+        'q' -> "♛"
+        'k' -> "♚"
+        else -> ""
     }
 
-    Image(
-        bitmap = image.asImageBitmap(),
-        contentDescription = null,
-        contentScale = ContentScale.Fit,
-        alignment = Alignment.Center
-    )
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Text(
+            text = pieceSymbol,
+            fontSize = 28.sp,
+            color = if (isWhitePiece) Color.White else Color.Black,
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
 
-    val httpClient = remember { OkHttpClient() }
-    var bestMove = remember { mutableStateOf<String?>(null) }
-    var boardFen = remember { mutableStateOf<String>(STARTING_FEN) }
-    var analysisError = remember { mutableStateOf<Boolean>(false) }
-    LaunchedEffect(Unit) {
-        Thread {
-            try {
-                boardFen.value = analyseImage(httpClient, image)
-            } catch (exc : Exception) {
-                Log.e("com.knightvision", "Exception during board image analysis", exc)
-                analysisError.value = true
+// Function to parse FEN string to 2D board array
+fun parseFenToBoard(fen: String): Array<Array<Char>> {
+    val board = Array(8) { Array(8) { '.' } } // Empty board with '.' representing empty squares
+    val fenParts = fen.split(" ")
+    val fenBoard = fenParts[0]
+    val ranks = fenBoard.split("/")
+
+    for (rankIndex in ranks.indices) {
+        var fileIndex = 0
+        for (c in ranks[rankIndex]) {
+            if (c.isDigit()) {
+                // Skip empty squares
+                fileIndex += c.digitToInt()
+            } else {
+                // Place piece
+                board[rankIndex][fileIndex] = c
+                fileIndex++
             }
-
-            StockfishBridge.initEngine()
-            var output = ""
-            output += StockfishBridge.runCmd("uci")
-            output += StockfishBridge.runCmd("position " + boardFen)
-            output += StockfishBridge.runCmd("go")
-            Log.d("com.knightvision - libstockfish", output)
-            Thread.sleep(3000) // TODO definitely make this a slider or add a stop button
-            bestMove.value = StockfishBridge.bestmove()
-        }.start()
-    }
-
-
-    Column {
-        Text(boardFen.value)
-
-        if (analysisError.value) {
-            Toast.makeText(
-                LocalContext.current,
-                "Failed to extract board position from image.",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-
-        if (bestMove.value != null) {
-            Text(bestMove.value!!)
-        } else {
-            Text("Calculating best move...")
         }
     }
+
+    return board
+}
+
+// For preview/testing purposes - Add a simple drawing of pieces
+@Composable
+fun SimplePieceDrawing(piece: Char, color: Color) {
+    Text(
+        text = when (piece) {
+            'P', 'p' -> "♟"
+            'R', 'r' -> "♜"
+            'N', 'n' -> "♞"
+            'B', 'b' -> "♝"
+            'Q', 'q' -> "♛"
+            'K', 'k' -> "♚"
+            else -> ""
+        },
+        fontSize = 24.sp,
+        color = color,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxSize()
+    )
 }
