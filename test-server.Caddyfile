@@ -1,6 +1,6 @@
 :80 {
     handle_path /parse-board {
         method POST
-        respond "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+        respond "rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/5N2/PPP1PPPP/RN1QKB1R b KQkq - 3 3"
     }
 }

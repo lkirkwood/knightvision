@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     kotlin("android") version "2.1.20"
     id("org.jetbrains.kotlin.plugin.compose") version "2.1.20"
+    kotlin("plugin.serialization") version "2.1.20"
 }
 
 android {
@@ -40,6 +41,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
 
     // Compose UI
     implementation("androidx.compose.ui:ui:1.5.0")

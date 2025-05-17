@@ -17,15 +17,24 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import com.knightvision.StockfishBridge
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalysisScreen(
     onBackClick: () -> Unit = {},
-    fenString: String = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR" // Default starting position
+    fenString: String
 ) {
 
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Moves", "Openings")
+    val stockfish = StockfishBridge
+
+    var moves = remember { mutableStateOf<List<String>>(listOf()) }
+
+    LaunchedEffect(Unit) {
+        moves.value = moves.value + stockfish.bestmove()
+    }
 
     Column(
         modifier = Modifier
@@ -88,7 +97,7 @@ fun AnalysisScreen(
                 .padding(16.dp))
         {
             when (selectedTabIndex) {
-                0 -> MovesContent()
+                0 -> MovesContent(moves.value)
                 1 -> OpeningContent()
             }
         }
@@ -96,7 +105,7 @@ fun AnalysisScreen(
 }
 
 @Composable
-fun MovesContent() {
+fun MovesContent(moves: List<String>) {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
@@ -111,12 +120,23 @@ fun MovesContent() {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            text = "No current moves to display",
-            fontSize = 14.sp,
-            color = Color.Gray,
-            textAlign = TextAlign.Center
-        )
+        if (moves.isEmpty()) {
+            Text(
+                text = "No current moves to display",
+                fontSize = 14.sp,
+                color = Color.Gray,
+                textAlign = TextAlign.Center
+            )
+        } else {
+            for (move in moves) {
+                Text(
+                    text = move,
+                    fontSize = 14.sp,
+                    color = Color.DarkGray,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
     }
 }
 
