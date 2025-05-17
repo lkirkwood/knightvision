@@ -1,5 +1,9 @@
 package com.knightvision.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,6 +24,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.filled.ContentCopy
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +50,13 @@ fun BoardDetectionScreen(
 
     // Parse FEN to determine board state
     val boardState = remember(fenString) { parseFenToBoard(fenString) }
+    val context = LocalContext.current
+    fun copyToClipboard(text: String) {
+        val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clipData = ClipData.newPlainText("FEN String", text)
+        clipboardManager.setPrimaryClip(clipData)
+        Toast.makeText(context, "FEN copied to clipboard", Toast.LENGTH_SHORT).show()
+    }
 
     Column(
         modifier = Modifier
@@ -119,59 +132,40 @@ fun BoardDetectionScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Detected Opening:",
-                            fontSize = 14.sp,
+                            text = "FEN String",
+                            fontSize = 16.sp,
                             color = Color.DarkGray
                         )
-                        Text(
-                            text = detectedOpening,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
-                    }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
+
                     ) {
                         Text(
-                            text = "Pieces detected:",
+                            text = fenString,
                             fontSize = 14.sp,
-                            color = Color.DarkGray
+                            color = Color.DarkGray,
+                            maxLines = 1,
+                            modifier = Modifier.weight(1f),
                         )
-                        Text(
-                            text = piecesDetected,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Position evaluation:",
-                            fontSize = 14.sp,
-                            color = Color.DarkGray
-                        )
-                        Text(
-                            text = "$evaluation $advantage",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
+                        IconButton(
+                           onClick = { copyToClipboard(fenString)},
+                            modifier = Modifier.size(24.dp)
+                        ){
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = "Copy FEN",
+                                tint = Color(0xFF4D4B6E)
+                            )
+                        }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Action Buttons
             Button(
@@ -303,7 +297,7 @@ fun ChessPiece(piece: Char) {
 
 // Function to parse FEN string to 2D board array
 fun parseFenToBoard(fen: String): Array<Array<Char>> {
-    val board = Array(8) { Array(8) { '.' } } // Empty board with '.' representing empty squares
+    val board = Array(8) { Array(8) { '.' } }
     val fenParts = fen.split(" ")
     val fenBoard = fenParts[0]
     val ranks = fenBoard.split("/")
@@ -325,7 +319,7 @@ fun parseFenToBoard(fen: String): Array<Array<Char>> {
     return board
 }
 
-// For preview/testing purposes - Add a simple drawing of pieces
+
 @Composable
 fun SimplePieceDrawing(piece: Char, color: Color) {
     Text(
