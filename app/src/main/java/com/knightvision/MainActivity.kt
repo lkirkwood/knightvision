@@ -58,6 +58,7 @@ import com.knightvision.ui.screens.AnalysisScreen
 import com.knightvision.ui.screens.ScanBoardScreen
 import com.knightvision.ui.screens.BoardDetectionScreen
 import com.knightvision.ui.screens.WelcomeScreen
+import com.knightvision.ui.screens.SettingsScreen
 import com.knightvision.ui.theme.ChessVisionTheme
 
 
@@ -117,7 +118,7 @@ fun ChessVisionApp() {
             )
         }
         
-        composable("boardDetection"){
+        composable("boardDetection") {
             BoardDetectionScreen(
                 onBackClick = { navController.popBackStack() },
                 onAnalyseClick = { boardFen: String ->
@@ -135,15 +136,17 @@ fun ChessVisionApp() {
             )
         }
 
+        composable("settings") {
+            SettingsScreen(
+                onBackClick = { navController.navigate("welcome") }
+            )
+        }
+
         composable("previous") {
             // Placeholder for the previous analysis screen
             PlaceholderScreen("Previous Analysis Screen")
         }
 
-        composable("settings") {
-            // Placeholder for the settings screen
-            PlaceholderScreen("Settings Screen")
-        }
     }
 }
 

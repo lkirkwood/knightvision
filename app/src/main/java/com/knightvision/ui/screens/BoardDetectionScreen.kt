@@ -28,19 +28,22 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import java.io.ByteArrayOutputStream
 import java.io.IOException
-
-import com.knightvision.StockfishBridge
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.ComponentActivity
 
-const val ANALYSIS_SERVER = "http://13.239.241.45/parse-board"
+import com.knightvision.StockfishBridge
+import com.knightvision.ui.screens.SettingsViewModel
+
 const val STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
 
-suspend fun analyseImage(client: OkHttpClient, image: Bitmap): String = withContext(Dispatchers.IO) {
+suspend fun analyseImage(client: OkHttpClient, serverAddress: String, image: Bitmap): String = withContext(Dispatchers.IO) {
     val imageBytes = ByteArrayOutputStream()
     image.compress(Bitmap.CompressFormat.JPEG, 100, imageBytes)
     val request = Request.Builder()
-        .url(ANALYSIS_SERVER) // TODO make this configurable or something
+        .url("http://" + serverAddress + "/parse-board")
         .post(imageBytes.toByteArray().toRequestBody("image/png".toMediaTypeOrNull()))
         .build()
 
@@ -71,8 +74,9 @@ fun BoardDetectionScreen(
     onBackClick: () -> Unit = {},
     boardImage: Bitmap?,
     onAnalyseClick: (String) -> Unit,
-    onEditBoardClick: () -> Unit = {},
+    onEditBoardClick: () -> Unit = {}
 ) {
+    val settings: SettingsViewModel = viewModel(LocalContext.current as ComponentActivity)
     var boardFen by remember { mutableStateOf<String>(STARTING_FEN) }
 
     LaunchedEffect(Unit) {
@@ -86,7 +90,7 @@ fun BoardDetectionScreen(
     LaunchedEffect(boardImage) {
         if (boardImage != null) {
             try {
-                boardFen = analyseImage(OkHttpClient(), boardImage)
+                boardFen = analyseImage(OkHttpClient(), settings.serverAddress, boardImage)
             } catch (exc : Exception) {
                 snackbarHostState.showSnackbar("Failed to extract board position from image.")
                 Log.e(
