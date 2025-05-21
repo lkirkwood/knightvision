@@ -45,16 +45,20 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
-
-
+import kotlinx.serialization.Serializable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
+import androidx.navigation.NavType
+import androidx.navigation.toRoute
+
 import com.knightvision.ui.screens.AnalysisScreen
 import com.knightvision.ui.screens.ScanBoardScreen
 import com.knightvision.ui.screens.BoardDetectionScreen
 import com.knightvision.ui.screens.WelcomeScreen
+import com.knightvision.ui.screens.SettingsScreen
 import com.knightvision.ui.theme.ChessVisionTheme
 
 
@@ -86,6 +90,10 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@JvmInline
+@Serializable
+value class BoardFEN(val fen: String)
+
 @Composable
 fun ChessVisionApp() {
     val navController = rememberNavController()
@@ -110,28 +118,35 @@ fun ChessVisionApp() {
             )
         }
         
-        composable("boardDetection"){
+        composable("boardDetection") {
             BoardDetectionScreen(
                 onBackClick = { navController.popBackStack() },
-                onAnalyseClick = {navController.navigate("analyse")}
+                onAnalyseClick = { boardFen: String ->
+                    navController.navigate(BoardFEN(boardFen))
+                },
+                boardImage = boardImage
             )
         }
-        
-        composable("analyse") {
+
+        composable<BoardFEN> { backStackEntry ->
+            val boardFen: BoardFEN = backStackEntry.toRoute()
             AnalysisScreen(
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                fenString = boardFen.fen
             )
         }
-        
+
+        composable("settings") {
+            SettingsScreen(
+                onBackClick = { navController.navigate("welcome") }
+            )
+        }
+
         composable("previous") {
             // Placeholder for the previous analysis screen
             PlaceholderScreen("Previous Analysis Screen")
         }
 
-        composable("settings") {
-            // Placeholder for the settings screen
-            PlaceholderScreen("Settings Screen")
-        }
     }
 }
 

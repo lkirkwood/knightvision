@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Settings
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -100,6 +101,15 @@ fun WelcomeScreen(
                 )
             }
 
+            IconButton(
+                onClick = onSettingsClick,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Settings"
+                )
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
 
 
@@ -165,12 +175,10 @@ fun TopAppBar() {
                     text = "KnightVision",
                     color = Color.White,
                     fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
                 )
             }
-
-
-
         }
     }
 }

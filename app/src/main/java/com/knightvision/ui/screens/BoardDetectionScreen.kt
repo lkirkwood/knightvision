@@ -20,211 +20,283 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.graphics.Bitmap
+import android.util.Log
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.ComponentActivity
+
+import com.knightvision.StockfishBridge
+import com.knightvision.ui.screens.SettingsViewModel
+
+const val STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+
+suspend fun analyseImage(client: OkHttpClient, serverAddress: String, image: Bitmap): String = withContext(Dispatchers.IO) {
+    val imageBytes = ByteArrayOutputStream()
+    image.compress(Bitmap.CompressFormat.JPEG, 100, imageBytes)
+    val request = Request.Builder()
+        .url("http://" + serverAddress + "/parse-board")
+        .post(imageBytes.toByteArray().toRequestBody("image/png".toMediaTypeOrNull()))
+        .build()
+
+    val responseBody = client.newCall(request).execute().use { response ->
+        if (!response.isSuccessful) {
+            Log.e("com.knightvision", "Request to extract position from board failed: ${response.body}")
+            throw IOException("Request to extract position from board failed: ${response.body}")
+        }
+
+        if (response.body == null) {
+            Log.e("com.knightvision", "Response from board analyser was empty.")
+            throw IllegalArgumentException("Response from board analyser was empty.")
+        }
+
+        response.body!!.string()
+    }
+    responseBody
+}
+
+suspend fun searchPosition(boardFen: String, depth: Int = 20) = withContext(Dispatchers.Default) {
+    StockfishBridge.runCmd("position " + boardFen)
+    StockfishBridge.runCmd("go depth " + depth)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BoardDetectionScreen(
     onBackClick: () -> Unit = {},
-    imageUri: String = "",
-    onAnalyseClick: () -> Unit = {},
-    onEditBoardClick: () -> Unit = {},
-    fenString: String = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR" // Default starting position
+    boardImage: Bitmap?,
+    onAnalyseClick: (String) -> Unit,
+    onEditBoardClick: () -> Unit = {}
 ) {
+    val settings: SettingsViewModel = viewModel(LocalContext.current as ComponentActivity)
+    var boardFen by remember { mutableStateOf<String>(STARTING_FEN) }
 
-    LaunchedEffect(imageUri) {
-        if (imageUri.isNotEmpty()){
-            // process image here
+    LaunchedEffect(Unit) {
+        Thread {
+            StockfishBridge.initEngine()
+            StockfishBridge.runCmd("uci")
+        }.run()
+    }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(boardImage) {
+        if (boardImage != null) {
+            try {
+                boardFen = analyseImage(OkHttpClient(), settings.serverAddress, boardImage)
+            } catch (exc : Exception) {
+                snackbarHostState.showSnackbar("Failed to extract board position from image.")
+                Log.e(
+                    "com.knightvision",
+                    "Request to extract position from board threw an error: ",
+                    exc
+                )
+            }
         }
     }
+
+    var boardState = remember(boardFen) { parseFenToBoard(boardFen) }
+    LaunchedEffect(boardFen) {
+        boardState = parseFenToBoard(boardFen)
+        searchPosition(boardFen)
+    }
+
     // State for board information
     var detectedOpening by remember { mutableStateOf("Starting Position") }
     var piecesDetected by remember { mutableStateOf("32/32") }
     var evaluation by remember { mutableStateOf("") }
     var advantage by remember { mutableStateOf("Equal") }
 
-    // Parse FEN to determine board state
-    val boardState = remember(fenString) { parseFenToBoard(fenString) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
-    ) {
-        // Top App Bar
-        TopAppBar(
-            title = { Text("Board Detection") },
-            navigationIcon = {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = Color.White
-                    )
-                }
-            },
-
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color(0xFF4D4B6E),
-                titleContentColor = Color.White
-            )
-        )
-
+    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .background(Color(0xFFF5F5F5))
         ) {
-            // Detected Position Label
-            Text(
-                text = "Detected Position:",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.DarkGray,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
+            // Top App Bar
+            TopAppBar(
+                title = { Text("Board Detection") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                },
+
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF4D4B6E),
+                    titleContentColor = Color.White
+                )
             )
 
-            // Chess Board
-            ChessBoard(
-                boardState = boardState,
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Position Information Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(8.dp),
-                elevation = CardDefaults.cardElevation(4.dp)
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
+                // Detected Position Label
+                Text(
+                    text = "Detected Position:",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.DarkGray,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(bottom = 8.dp)
+                )
+
+                // Chess Board
+                ChessBoard(
+                    boardState = boardState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Position Information Card
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    elevation = CardDefaults.cardElevation(4.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
                     ) {
-                        Text(
-                            text = "Detected Opening:",
-                            fontSize = 14.sp,
-                            color = Color.DarkGray
-                        )
-                        Text(
-                            text = detectedOpening,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
-                    }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Detected Opening:",
+                                fontSize = 14.sp,
+                                color = Color.DarkGray
+                            )
+                            Text(
+                                text = detectedOpening,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
+                        }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Pieces detected:",
-                            fontSize = 14.sp,
-                            color = Color.DarkGray
-                        )
-                        Text(
-                            text = piecesDetected,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
-                    }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Pieces detected:",
+                                fontSize = 14.sp,
+                                color = Color.DarkGray
+                            )
+                            Text(
+                                text = piecesDetected,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
+                        }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Position evaluation:",
-                            fontSize = 14.sp,
-                            color = Color.DarkGray
-                        )
-                        Text(
-                            text = "$evaluation $advantage",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Position evaluation:",
+                                fontSize = 14.sp,
+                                color = Color.DarkGray
+                            )
+                            Text(
+                                text = "$evaluation $advantage",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
+                        }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.weight(1f))
 
-            // Action Buttons
-            Button(
-                onClick = onAnalyseClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(28.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF4D4B6E)
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = "Analyse Position Icon",
-                    tint = Color.White
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Analyse Position",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White
-                )
-            }
+                // Action Buttons
+                Button(
+                    onClick = { -> onAnalyseClick(boardFen) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(28.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4D4B6E)
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = "Analyse Position Icon",
+                        tint = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Analyse Position",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            OutlinedButton(
-                onClick = onEditBoardClick, // TODO: add edit board screen
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(28.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color(0xFF4D4B6E)
-                ),
-                border = ButtonDefaults.outlinedButtonBorder.copy(
-                    brush = androidx.compose.ui.graphics.SolidColor(Color(0xFF4D4B6E))
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "Edit Board Icon",
-                    tint = Color(0xFF4D4B6E)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Edit Board",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF4D4B6E)
-                )
+                OutlinedButton(
+                    onClick = onEditBoardClick, // TODO: add edit board screen
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(28.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFF4D4B6E)
+                    ),
+                    border = ButtonDefaults.outlinedButtonBorder.copy(
+                        brush = androidx.compose.ui.graphics.SolidColor(Color(0xFF4D4B6E))
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit Board Icon",
+                        tint = Color(0xFF4D4B6E)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Edit Board",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF4D4B6E)
+                    )
+                }
             }
         }
     }
