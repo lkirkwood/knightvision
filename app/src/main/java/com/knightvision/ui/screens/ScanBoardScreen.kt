@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -50,6 +51,8 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.lifecycle.LifecycleOwner
 import com.google.common.util.concurrent.ListenableFuture
 import java.util.concurrent.Executors
+import androidx.compose.ui.unit.dp
+
 import com.knightvision.R
 
 fun setupCamera(
@@ -174,7 +177,7 @@ fun ScanBoardScreen(
         }
 
         // Camera Preview Area
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
@@ -189,27 +192,36 @@ fun ScanBoardScreen(
                 cameraPreview?.setSurfaceProvider(previewView.surfaceProvider)
             }
 
+            val barHeight = (this.constraints.maxHeight - this.constraints.maxWidth) / 2
+
+            // Top black bar
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(with(LocalDensity.current) { barHeight.toDp() })
+                    .align(Alignment.TopCenter)
+                    .background(Color.Black)
+            )
+
+            // Bottom black bar
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(with(LocalDensity.current) { barHeight.toDp() })
+                    .align(Alignment.BottomCenter)
+                    .background(Color.Black)
+            )
+
             // Instruction Text
             Text(
                 text = "Center the chessboard within the frame and ensure all pieces are clearly visible",
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .background(Color.Black.copy(alpha = 0.4f))
-                    .padding(12.dp),
+                    .padding(26.dp),
                 textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.titleMedium,
                 color = Color.White,
                 fontWeight = FontWeight.Bold
-            )
-
-            // Grid overlay
-            Image(
-                painter = painterResource(id = R.drawable.grid),
-                contentDescription = null,
-                modifier = Modifier.fillMaxWidth(),
-                alignment = Alignment.Center,
-                alpha = 1.0f,
-                contentScale = ContentScale.FillWidth,
             )
 
             // Camera capture button
