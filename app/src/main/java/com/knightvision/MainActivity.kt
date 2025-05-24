@@ -90,6 +90,8 @@ class MainActivity : ComponentActivity() {
 fun ChessVisionApp() {
     val navController = rememberNavController()
     var boardImage by remember { mutableStateOf<Bitmap?>(null) }
+    var isAnalysing by remember { mutableStateOf(false) }
+    var detectedFen by remember {mutableStateOf("")}
 
     NavHost(navController = navController, startDestination = "welcome") {
         composable("welcome") {
@@ -105,7 +107,10 @@ fun ChessVisionApp() {
                 onBackClick = { navController.popBackStack() },
                 onPictureTaken = {image: Bitmap ->
                     boardImage = image
+                    isAnalysing = true
+                    detectedFen = ""
                     navController.navigate("boardDetection")
+                    //TODO: include server call here
                 }
             )
         }
@@ -113,7 +118,12 @@ fun ChessVisionApp() {
         composable("boardDetection"){
             BoardDetectionScreen(
                 onBackClick = { navController.popBackStack() },
-                onAnalyseClick = {navController.navigate("analyse")}
+                onAnalyseClick = {
+                    navController.navigate("analyse")
+                },
+                imageUri = boardImage?.toString() ?: "",
+                fenString = detectedFen,
+                isAnalysing = isAnalysing
             )
         }
         
@@ -138,7 +148,6 @@ fun ChessVisionApp() {
 
 @Composable
 fun PlaceholderScreen(screenName: String) {
-    // A simple placeholder screen for demonstration
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
