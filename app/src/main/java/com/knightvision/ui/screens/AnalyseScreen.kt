@@ -3,6 +3,7 @@ package com.knightvision.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
@@ -97,52 +98,73 @@ fun AnalysisScreen(
 
 @Composable
 fun MovesContent() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Moves will be displayed here",
-            fontSize = 16.sp,
-            color = Color.DarkGray,
-            textAlign = TextAlign.Center
-        )
+    var moveSuggestions by remember { mutableStateOf<List<Triple<String, String, String>>>(emptyList()) }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "No current moves to display",
-            fontSize = 14.sp,
-            color = Color.Gray,
-            textAlign = TextAlign.Center
+    // TODO: Replace with actual data fetch logic
+    LaunchedEffect(Unit) {
+        moveSuggestions = listOf(
+            Triple("e4", "+0.34", "e5") // add api call here
         )
     }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 8.dp),
+        verticalArrangement = Arrangement.Top,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (moveSuggestions.isEmpty()) {
+            Text(
+                text = "Loading suggestions...",
+                fontSize = 14.sp,
+                color = Color.Gray,
+                modifier = Modifier.padding(top = 16.dp)
+            )
+        } else {
+            moveSuggestions.forEach { (move, eval, pondering) ->
+                AnalysisItemCard(move, eval, pondering)
+            }
+        }
+    }
 }
-
-
 
 @Composable
 fun OpeningContent() {
     Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 8.dp),
+        verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Opening will be displayed here",
-            fontSize = 16.sp,
-            color = Color.DarkGray,
-            textAlign = TextAlign.Center
+        val openingLines = listOf(
+            Triple("Ruy Lopez", "e4 e5 Nf3 Nc6 Bb5", "+0.25") // replace with api call too
+
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        openingLines.forEach { (name, moves, eval) ->
+            AnalysisItemCard(name, eval, "Line: $moves")
+        }
+    }
+}
 
-        Text(
-            text = "No openings have been played",
-            fontSize = 14.sp,
-            color = Color.Gray,
-            textAlign = TextAlign.Center
-        )
+
+@Composable
+fun AnalysisItemCard(move: String, evaluation: String, pondering: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = "Move: $move", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(text = "Evaluation: $evaluation", fontSize = 14.sp, color = Color.DarkGray)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(text = "Pondering: $pondering", fontSize = 14.sp, color = Color.Gray)
+        }
     }
 }

@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.ContentCopy
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,12 +35,24 @@ fun BoardDetectionScreen(
     imageUri: String = "",
     onAnalyseClick: () -> Unit = {},
     onEditBoardClick: () -> Unit = {},
-    fenString: String = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR" // Default starting position
+    fenString: String = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR", // Default starting position
+    isAnalysing: Boolean = true
 ) {
 
+    var analysisComplete by remember { mutableStateOf(!isAnalysing)}
+    var currentFenString by remember { mutableStateOf(if (isAnalysing) "" else fenString) }
+
     LaunchedEffect(imageUri) {
-        if (imageUri.isNotEmpty()){
+        if (imageUri.isNotEmpty() && isAnalysing){
             // process image here
+            // TODO: server analysis goes here
+        }
+    }
+
+    LaunchedEffect(fenString) {
+        if (!isAnalysing) {
+            currentFenString = fenString
+            analysisComplete = true
         }
     }
     // State for board information
@@ -49,7 +62,9 @@ fun BoardDetectionScreen(
     var advantage by remember { mutableStateOf("Equal") }
 
     // Parse FEN to determine board state
-    val boardState = remember(fenString) { parseFenToBoard(fenString) }
+    val boardState = remember(currentFenString) {
+        if (currentFenString.isNotEmpty()) parseFenToBoard(currentFenString) else parseFenToBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")
+    }
     val context = LocalContext.current
     fun copyToClipboard(text: String) {
         val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -222,6 +237,67 @@ fun BoardDetectionScreen(
             }
         }
     }
+    if (!analysisComplete) {
+        LoadingOverlay()
+    }
+}
+@Composable
+fun LoadingOverlay() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.7f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .padding(32.dp)
+                .fillMaxWidth(0.8f),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(64.dp),
+                    color = Color(0xFF4D4B6E),
+                    strokeWidth = 6.dp
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = "Analysing Board Position",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF4D4B6E),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Please wait as your position is being analysed...",
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 20.sp
+                )
+            }
+        }
+    }
+}
+
+suspend fun serverAnalysis(onComplete: (String) -> Unit) {
+
+    val detectedFen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR"
+    onComplete(detectedFen)
 }
 
 @Composable
