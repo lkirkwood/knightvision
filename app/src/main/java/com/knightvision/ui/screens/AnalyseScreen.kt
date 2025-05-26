@@ -18,15 +18,24 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import com.knightvision.StockfishBridge
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalysisScreen(
     onBackClick: () -> Unit = {},
-    fenString: String = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR" // Default starting position
+    fenString: String
 ) {
 
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Moves", "Openings")
+    val stockfish = StockfishBridge
+
+    var moves = remember { mutableStateOf<List<String>>(listOf()) }
+
+    LaunchedEffect(Unit) {
+        moves.value = moves.value + stockfish.bestmove()
+    }
 
     Column(
         modifier = Modifier
@@ -99,7 +108,6 @@ fun AnalysisScreen(
 @Composable
 fun MovesContent() {
     var moveSuggestions by remember { mutableStateOf<List<Triple<String, String, String>>>(emptyList()) }
-
     // TODO: Replace with actual data fetch logic
     LaunchedEffect(Unit) {
         moveSuggestions = listOf(
