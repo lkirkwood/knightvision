@@ -69,6 +69,7 @@ fun setupCamera(
         // Unbind any previous use cases first
         provider.unbindAll()
 
+
         // Bind use cases to camera
         provider.bindToLifecycle(
             lifecycleOwner,

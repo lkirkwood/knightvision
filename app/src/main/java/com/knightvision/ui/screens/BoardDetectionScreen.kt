@@ -1,5 +1,9 @@
 package com.knightvision.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,6 +16,9 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +40,10 @@ import kotlinx.coroutines.Dispatchers
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.filled.ContentCopy
+import kotlinx.coroutines.delay
+
 
 import com.knightvision.StockfishBridge
 import com.knightvision.ui.screens.SettingsViewModel
@@ -69,6 +80,13 @@ suspend fun searchPosition(boardFen: String, depth: Int = 20) = withContext(Disp
     StockfishBridge.runCmd("go depth " + depth)
 }
 
+fun copyToClipboard(context: Context, text: String) {
+    val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    val clipData = ClipData.newPlainText("FEN String", text)
+    clipboardManager.setPrimaryClip(clipData)
+    Toast.makeText(context, "FEN copied to clipboard", Toast.LENGTH_SHORT).show()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BoardDetectionScreen(
@@ -89,12 +107,15 @@ fun BoardDetectionScreen(
         }
     }
 
+    var analysisComplete by remember { mutableStateOf<Boolean>(false)}
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(boardImageModel.boardImage) {
         if (boardImageModel.boardImage != null) {
             try {
                 boardFen = analyseImage(OkHttpClient(), settings.serverAddress, boardImageModel.boardImage!!)
+                analysisComplete = true
             } catch (exc : Exception) {
+                analysisComplete = true
                 snackbarHostState.showSnackbar("Failed to extract board position from image.")
                 Log.e(
                     "com.knightvision",
@@ -118,7 +139,6 @@ fun BoardDetectionScreen(
     var piecesDetected by remember { mutableStateOf("32/32") }
     var evaluation by remember { mutableStateOf("") }
     var advantage by remember { mutableStateOf("Equal") }
-
 
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) {
         Column(
@@ -190,64 +210,41 @@ fun BoardDetectionScreen(
                             .fillMaxWidth()
                             .padding(16.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Detected Opening:",
-                                fontSize = 14.sp,
-                                color = Color.DarkGray
-                            )
-                            Text(
-                                text = detectedOpening,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
-                            )
-                        }
+                        Text(
+                            text = "FEN String",
+                            fontSize = 16.sp,
+                            color = Color.DarkGray
+                        )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                    }
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Pieces detected:",
-                                fontSize = 14.sp,
-                                color = Color.DarkGray
-                            )
-                            Text(
-                                text = piecesDetected,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
-                            )
-                        }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Position evaluation:",
-                                fontSize = 14.sp,
-                                color = Color.DarkGray
-                            )
-                            Text(
-                                text = "$evaluation $advantage",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
+                    ) {
+                        Text(
+                            text = boardFen,
+                            fontSize = 14.sp,
+                            color = Color.DarkGray,
+                            maxLines = 1,
+                            modifier = Modifier.weight(1f),
+                        )
+                        val clipboardContext = LocalContext.current
+                        IconButton(
+                            onClick = { copyToClipboard(clipboardContext, boardFen) },
+                            modifier = Modifier.size(24.dp)
+                        ){
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = "Copy FEN",
+                                tint = Color(0xFF4D4B6E)
                             )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(16.dp))
 
                 // Action Buttons
                 Button(
@@ -305,6 +302,69 @@ fun BoardDetectionScreen(
             }
         }
     }
+
+    if (!analysisComplete) {
+        LoadingOverlay()
+    }
+}
+
+@Composable
+fun LoadingOverlay() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.7f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .padding(32.dp)
+                .fillMaxWidth(0.8f),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(64.dp),
+                    color = Color(0xFF4D4B6E),
+                    strokeWidth = 6.dp
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = "Analysing Board Position",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF4D4B6E),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Please wait as your position is being analysed...",
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 20.sp
+                )
+            }
+        }
+    }
+}
+
+suspend fun serverAnalysis(onComplete: (String) -> Unit) {
+
+    val detectedFen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR"
+    onComplete(detectedFen)
 }
 
 @Composable
@@ -380,7 +440,7 @@ fun ChessPiece(piece: Char) {
 
 // Function to parse FEN string to 2D board array
 fun parseFenToBoard(fen: String): Array<Array<Char>> {
-    val board = Array(8) { Array(8) { '.' } } // Empty board with '.' representing empty squares
+    val board = Array(8) { Array(8) { '.' } }
     val fenParts = fen.split(" ")
     val fenBoard = fenParts[0]
     val ranks = fenBoard.split("/")
@@ -402,7 +462,7 @@ fun parseFenToBoard(fen: String): Array<Array<Char>> {
     return board
 }
 
-// For preview/testing purposes - Add a simple drawing of pieces
+
 @Composable
 fun SimplePieceDrawing(piece: Char, color: Color) {
     Text(

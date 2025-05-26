@@ -148,7 +148,6 @@ fun ChessVisionApp() {
 
 @Composable
 fun PlaceholderScreen(screenName: String) {
-    // A simple placeholder screen for demonstration
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
