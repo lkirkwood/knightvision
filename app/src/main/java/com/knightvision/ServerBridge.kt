@@ -21,7 +21,7 @@ public class BoardState(
     val boardFen: String, val openingName: String? = null, val openingMoves: List<List<String>>? = null)
 
 suspend fun analyseImage(
-    serverAddress: String, image: Bitmap
+    serverAddress: String, image: Bitmap, orientation: String
 ): BoardState = withContext(Dispatchers.IO) {
     val client = OkHttpClient.Builder()
         .readTimeout(90, TimeUnit.SECONDS)
@@ -31,7 +31,7 @@ suspend fun analyseImage(
     image.compress(Bitmap.CompressFormat.JPEG, 100, imageBytes)
 
     val request = Request.Builder()
-        .url("http://" + serverAddress + "/parse-board")
+        .url("http://" + serverAddress + "/parse-board?orientation=" + orientation.lowercase())
         .post(imageBytes.toByteArray().toRequestBody("image/png".toMediaTypeOrNull()))
         .build()
 

@@ -29,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.Slider
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -84,6 +85,7 @@ fun setupCamera(
 
 public class BoardImageViewModel : ViewModel() {
     var boardImage by mutableStateOf<Bitmap?>(null)
+    var orientation by mutableStateOf<String>("left")
 }
 
 @Composable
@@ -226,17 +228,48 @@ fun ScanBoardScreen(
                     .background(Color.Black)
             )
 
-            // Instruction Text
-            Text(
-                text = "Center the chessboard within the frame and ensure all pieces are clearly visible",
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(26.dp),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-            )
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Instruction Text
+                Text(
+                    text = "Specify which side of the board the white pieces started on.",
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+
+
+                val orientations = listOf("Left", "Top", "Right", "Bottom")
+                var orientationSlider by remember { mutableStateOf(0f) }
+                Slider(
+                    value = orientationSlider,
+                    onValueChange = {
+                        orientationSlider = it
+                        val index = (it * 3).toInt().coerceIn(0, 3)
+                        viewModel.orientation = orientations[index]
+                    },
+                    valueRange = 0f..4f,
+                    steps = 2,
+                    modifier = Modifier.fillMaxWidth(0.8f)
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(0.95f),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    orientations.forEach { label ->
+                        Box(
+                            modifier = Modifier.weight(1f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(label, color = Color.White)
+                        }
+                    }
+                }
+            }
 
             // Camera capture button
             Box(

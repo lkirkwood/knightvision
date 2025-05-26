@@ -90,7 +90,11 @@ fun BoardDetectionScreen(
     LaunchedEffect(boardImageModel.boardImage) {
         if (boardImageModel.boardImage != null) {
             try {
-                boardState = analyseImage(settings.serverAddress, boardImageModel.boardImage!!)
+                boardState = analyseImage(
+                    settings.serverAddress,
+                    boardImageModel.boardImage!!,
+                    boardImageModel.orientation
+                )
                 if (boardState.openingName != null) {
                     detectedOpening = boardState.openingName!!
                 } else {
