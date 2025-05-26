@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -26,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.ContentCopy
-import kotlinx.coroutines.delay
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,6 +43,14 @@ fun BoardDetectionScreen(
     var analysisComplete by remember { mutableStateOf(!isAnalysing)}
     var currentFenString by remember { mutableStateOf(if (isAnalysing) "" else fenString) }
 
+    // Castling rights state
+    var whiteKingSide by remember { mutableStateOf(true) }
+    var whiteQueenSide by remember { mutableStateOf(true) }
+    var blackKingSide by remember { mutableStateOf(true) }
+    var blackQueenSide by remember { mutableStateOf(true) }
+
+    // Current player state
+    var activePlayer by remember { mutableStateOf('w') }
     LaunchedEffect(imageUri) {
         if (imageUri.isNotEmpty() && isAnalysing){
             // process image here
@@ -100,7 +109,7 @@ fun BoardDetectionScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Detected Position Label
@@ -111,7 +120,7 @@ fun BoardDetectionScreen(
                 color = Color.DarkGray,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 8.dp)
+                    .padding(bottom = 4.dp)
             )
 
             // Chess Board
@@ -120,27 +129,27 @@ fun BoardDetectionScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(4.dp))
+                    .border(1.dp, Color.LightGray, RoundedCornerShape(4.dp))
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Position Information Card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 4.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = Color.White
                 ),
-                shape = RoundedCornerShape(8.dp),
-                elevation = CardDefaults.cardElevation(4.dp)
+                shape = RoundedCornerShape(4.dp),
+                elevation = CardDefaults.cardElevation(3.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(12.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -167,9 +176,9 @@ fun BoardDetectionScreen(
                             modifier = Modifier.weight(1f),
                         )
                         IconButton(
-                           onClick = { copyToClipboard(fenString)},
+                            onClick = { copyToClipboard(fenString) },
                             modifier = Modifier.size(24.dp)
-                        ){
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.ContentCopy,
                                 contentDescription = "Copy FEN",
@@ -180,60 +189,256 @@ fun BoardDetectionScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Action Buttons
-            Button(
-                onClick = onAnalyseClick,
+            // Castling and Turn Control Card
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(28.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF4D4B6E)
-                )
+                    .padding(vertical = 4.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                shape = RoundedCornerShape(4.dp),
+                elevation = CardDefaults.cardElevation(3.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = "Analyse Position Icon",
-                    tint = Color.White
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Analyse Position",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                ) {
+                    // Castling Section
+                    Text(
+                        text = "Castling",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.DarkGray,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                            .align(Alignment.CenterHorizontally),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // White Section
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = "White",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.DarkGray,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "0-0",
+                                        fontSize = 12.sp,
+                                        color = Color.DarkGray,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    )
+                                    Checkbox(
+                                        checked = whiteKingSide,
+                                        onCheckedChange = { whiteKingSide = it },
+                                        colors = CheckboxDefaults.colors(
+                                            checkedColor = Color(0xFF4D4B6E)
+                                        ),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "0-0-0",
+                                        fontSize = 12.sp,
+                                        color = Color.DarkGray,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    )
+                                    Checkbox(
+                                        checked = whiteQueenSide,
+                                        onCheckedChange = { whiteQueenSide = it },
+                                        colors = CheckboxDefaults.colors(
+                                            checkedColor = Color(0xFF4D4B6E)
+                                        ),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Black Section
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = "Black",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.DarkGray,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "0-0",
+                                        fontSize = 12.sp,
+                                        color = Color.DarkGray,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    )
+                                    Checkbox(
+                                        checked = blackKingSide,
+                                        onCheckedChange = { blackKingSide = it },
+                                        colors = CheckboxDefaults.colors(
+                                            checkedColor = Color(0xFF4D4B6E)
+                                        ),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "0-0-0",
+                                        fontSize = 12.sp,
+                                        color = Color.DarkGray,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    )
+                                    Checkbox(
+                                        checked = blackQueenSide,
+                                        onCheckedChange = { blackQueenSide = it },
+                                        colors = CheckboxDefaults.colors(
+                                            checkedColor = Color(0xFF4D4B6E)
+                                        ),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Turn Toggle Section
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Active Player",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.DarkGray
+                        )
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (activePlayer == 'w') "White" else "Black",
+                                fontSize = 14.sp,
+                                color = Color.DarkGray,
+                                modifier = Modifier.padding(end = 4.dp)
+                            )
+
+                            Switch(
+                                checked = activePlayer == 'b',
+                                onCheckedChange = { activePlayer = if (it) 'b' else 'w' },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = Color(0xFF4D4B6E),
+                                    uncheckedThumbColor = Color.White,
+                                    uncheckedTrackColor = Color.Gray
+                                )
+                            )
+                        }
+                    }
+                }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            OutlinedButton(
-                onClick = onEditBoardClick, // TODO: add edit board screen
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(28.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color(0xFF4D4B6E)
-                ),
-                border = ButtonDefaults.outlinedButtonBorder.copy(
-                    brush = androidx.compose.ui.graphics.SolidColor(Color(0xFF4D4B6E))
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "Edit Board Icon",
-                    tint = Color(0xFF4D4B6E)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Edit Board",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF4D4B6E)
-                )
+                // Action Buttons
+                Button(
+                    onClick = onAnalyseClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(28.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4D4B6E)
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = "Analyse Position Icon",
+                        tint = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "Analyse Position",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedButton(
+                    onClick = onEditBoardClick, // TODO: add edit board screen
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(28.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFF4D4B6E)
+                    ),
+                    border = ButtonDefaults.outlinedButtonBorder.copy(
+                        brush = androidx.compose.ui.graphics.SolidColor(Color(0xFF4D4B6E))
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit Board Icon",
+                        tint = Color(0xFF4D4B6E)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Edit Board",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF4D4B6E)
+                    )
+                }
             }
         }
     }

@@ -1,5 +1,6 @@
 package com.knightvision
 
+import android.annotation.SuppressLint
 import java.io.File
 import java.io.IOException
 import java.io.OutputStreamWriter
@@ -46,6 +47,7 @@ fun Waiting() {
 }
 
 class AnalysisActivity : AppCompatActivity() {
+    @SuppressLint("LongLogTag")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
