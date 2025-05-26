@@ -36,6 +36,7 @@ import androidx.activity.ComponentActivity
 
 import com.knightvision.StockfishBridge
 import com.knightvision.ui.screens.SettingsViewModel
+import com.knightvision.ui.screens.BoardImageViewModel
 
 const val STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
 
@@ -72,25 +73,27 @@ suspend fun searchPosition(boardFen: String, depth: Int = 20) = withContext(Disp
 @Composable
 fun BoardDetectionScreen(
     onBackClick: () -> Unit = {},
-    boardImage: Bitmap?,
     onAnalyseClick: (String) -> Unit,
     onEditBoardClick: () -> Unit = {}
 ) {
     val settings: SettingsViewModel = viewModel(LocalContext.current as ComponentActivity)
+    val boardImageModel: BoardImageViewModel = viewModel(LocalContext.current as ComponentActivity)
     var boardFen by remember { mutableStateOf<String>(STARTING_FEN) }
+    var stockfishReady by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        Thread {
+        withContext(Dispatchers.IO) {
             StockfishBridge.initEngine()
             StockfishBridge.runCmd("uci")
-        }.run()
+            stockfishReady = true
+        }
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
-    LaunchedEffect(boardImage) {
-        if (boardImage != null) {
+    LaunchedEffect(boardImageModel.boardImage) {
+        if (boardImageModel.boardImage != null) {
             try {
-                boardFen = analyseImage(OkHttpClient(), settings.serverAddress, boardImage)
+                boardFen = analyseImage(OkHttpClient(), settings.serverAddress, boardImageModel.boardImage!!)
             } catch (exc : Exception) {
                 snackbarHostState.showSnackbar("Failed to extract board position from image.")
                 Log.e(
@@ -103,9 +106,11 @@ fun BoardDetectionScreen(
     }
 
     var boardState = remember(boardFen) { parseFenToBoard(boardFen) }
-    LaunchedEffect(boardFen) {
+    LaunchedEffect(boardFen, stockfishReady) {
         boardState = parseFenToBoard(boardFen)
-        searchPosition(boardFen)
+        if (stockfishReady) {
+            searchPosition(boardFen)
+        }
     }
 
     // State for board information

@@ -97,7 +97,6 @@ value class BoardFEN(val fen: String)
 @Composable
 fun ChessVisionApp() {
     val navController = rememberNavController()
-    var boardImage by remember { mutableStateOf<Bitmap?>(null) }
 
     NavHost(navController = navController, startDestination = "welcome") {
         composable("welcome") {
@@ -111,10 +110,7 @@ fun ChessVisionApp() {
         composable("scan") {
             ScanBoardScreen(
                 onBackClick = { navController.popBackStack() },
-                onPictureTaken = {image: Bitmap ->
-                    boardImage = image
-                    navController.navigate("boardDetection")
-                }
+                onPictureTaken = { navController.navigate("boardDetection") }
             )
         }
         
@@ -124,7 +120,6 @@ fun ChessVisionApp() {
                 onAnalyseClick = { boardFen: String ->
                     navController.navigate(BoardFEN(boardFen))
                 },
-                boardImage = boardImage
             )
         }
 

@@ -45,13 +45,20 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.core.content.ContextCompat
+import androidx.activity.ComponentActivity
 import androidx.camera.view.PreviewView
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.common.util.concurrent.ListenableFuture
 import java.util.concurrent.Executors
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 
 import com.knightvision.R
 
@@ -74,11 +81,17 @@ fun setupCamera(
     }
 }
 
+public class BoardImageViewModel : ViewModel() {
+    var boardImage by mutableStateOf<Bitmap?>(null)
+}
+
 @Composable
 fun ScanBoardScreen(
     onBackClick: () -> Unit = {},
-    onPictureTaken: (Bitmap) -> Unit = {}
+    onPictureTaken: () -> Unit = {}
 ) {
+    val viewModel: BoardImageViewModel = viewModel(LocalContext.current as ComponentActivity)
+
     val context = LocalContext.current
     val lifecycleOwner = LocalContext.current as LifecycleOwner
 
@@ -236,17 +249,8 @@ fun ScanBoardScreen(
                         .clip(CircleShape)
                         .border(2.dp, Color(0xFF4D4B6E), CircleShape)
                         .clickable {
-                            cameraCapture.takePicture(cameraExecutor, object : ImageCapture.OnImageCapturedCallback() {
-                                override fun onCaptureSuccess(image : ImageProxy) {
-                                    Handler(Looper.getMainLooper()).post {
-                                        onPictureTaken(image.toBitmap())
-                                    }
-                                }
-
-                                override fun onError(exception : ImageCaptureException) {
-                                    Toast.makeText(context, exception.toString(), Toast.LENGTH_LONG).show()
-                                }
-                            })
+                            onPictureTaken()
+                            viewModel.boardImage = previewView.bitmap
                         }
                         .padding(4.dp),
                     contentAlignment = Alignment.Center
