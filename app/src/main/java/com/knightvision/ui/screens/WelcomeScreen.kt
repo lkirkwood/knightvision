@@ -103,6 +103,7 @@ fun WelcomeScreen(
 
             IconButton(
                 onClick = onSettingsClick,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
                 Icon(
                     imageVector = Icons.Filled.Settings,
