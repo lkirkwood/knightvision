@@ -29,10 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.graphics.Bitmap
 import android.util.Log
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import kotlinx.coroutines.withContext
@@ -44,36 +40,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.ContentCopy
 import kotlinx.coroutines.delay
 
-
 import com.knightvision.StockfishBridge
 import com.knightvision.ui.screens.SettingsViewModel
 import com.knightvision.ui.screens.BoardImageViewModel
+import com.knightvision.BoardState
+import com.knightvision.analyseImage
 
 const val STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
-
-suspend fun analyseImage(client: OkHttpClient, serverAddress: String, image: Bitmap): String = withContext(Dispatchers.IO) {
-    val imageBytes = ByteArrayOutputStream()
-    image.compress(Bitmap.CompressFormat.JPEG, 100, imageBytes)
-    val request = Request.Builder()
-        .url("http://" + serverAddress + "/parse-board")
-        .post(imageBytes.toByteArray().toRequestBody("image/png".toMediaTypeOrNull()))
-        .build()
-
-    val responseBody = client.newCall(request).execute().use { response ->
-        if (!response.isSuccessful) {
-            Log.e("com.knightvision", "Request to extract position from board failed: ${response.body}")
-            throw IOException("Request to extract position from board failed: ${response.body}")
-        }
-
-        if (response.body == null) {
-            Log.e("com.knightvision", "Response from board analyser was empty.")
-            throw IllegalArgumentException("Response from board analyser was empty.")
-        }
-
-        response.body!!.string()
-    }
-    responseBody
-}
 
 suspend fun searchPosition(boardFen: String, depth: Int = 20) = withContext(Dispatchers.Default) {
     StockfishBridge.runCmd("position " + boardFen)
@@ -96,7 +69,7 @@ fun BoardDetectionScreen(
 ) {
     val settings: SettingsViewModel = viewModel(LocalContext.current as ComponentActivity)
     val boardImageModel: BoardImageViewModel = viewModel(LocalContext.current as ComponentActivity)
-    var boardFen by remember { mutableStateOf<String>(STARTING_FEN) }
+    var boardState by remember { mutableStateOf<BoardState>(BoardState(STARTING_FEN)) }
     var stockfishReady by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -108,11 +81,21 @@ fun BoardDetectionScreen(
     }
 
     var analysisComplete by remember { mutableStateOf<Boolean>(false)}
+
+    var detectedOpening by remember { mutableStateOf("Starting Position") }
+    var evaluation by remember { mutableStateOf("") }
+    var advantage by remember { mutableStateOf("Equal") }
+
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(boardImageModel.boardImage) {
         if (boardImageModel.boardImage != null) {
             try {
-                boardFen = analyseImage(OkHttpClient(), settings.serverAddress, boardImageModel.boardImage!!)
+                boardState = analyseImage(settings.serverAddress, boardImageModel.boardImage!!)
+                if (boardState.openingName != null) {
+                    detectedOpening = boardState.openingName!!
+                } else {
+                    detectedOpening = "Unable to detect opening."
+                }
                 analysisComplete = true
             } catch (exc : Exception) {
                 analysisComplete = true
@@ -126,19 +109,14 @@ fun BoardDetectionScreen(
         }
     }
 
-    var boardState = remember(boardFen) { parseFenToBoard(boardFen) }
-    LaunchedEffect(boardFen, stockfishReady) {
-        boardState = parseFenToBoard(boardFen)
+    var boardArray = remember(boardState) { parseFenToBoard(boardState.boardFen) }
+    LaunchedEffect(boardState, stockfishReady) {
+        boardArray = parseFenToBoard(boardState.boardFen)
         if (stockfishReady) {
-            searchPosition(boardFen)
+            searchPosition(boardState.boardFen)
         }
     }
 
-    // State for board information
-    var detectedOpening by remember { mutableStateOf("Starting Position") }
-    var piecesDetected by remember { mutableStateOf("32/32") }
-    var evaluation by remember { mutableStateOf("") }
-    var advantage by remember { mutableStateOf("Equal") }
 
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) {
         Column(
@@ -184,7 +162,7 @@ fun BoardDetectionScreen(
 
                 // Chess Board
                 ChessBoard(
-                    boardState = boardState,
+                    boardArray = boardArray,
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(1f)
@@ -224,7 +202,7 @@ fun BoardDetectionScreen(
 
                     ) {
                         Text(
-                            text = boardFen,
+                            text = boardState.boardFen,
                             fontSize = 14.sp,
                             color = Color.DarkGray,
                             maxLines = 1,
@@ -232,7 +210,7 @@ fun BoardDetectionScreen(
                         )
                         val clipboardContext = LocalContext.current
                         IconButton(
-                            onClick = { copyToClipboard(clipboardContext, boardFen) },
+                            onClick = { copyToClipboard(clipboardContext, boardState.boardFen) },
                             modifier = Modifier.size(24.dp)
                         ){
                             Icon(
@@ -248,7 +226,7 @@ fun BoardDetectionScreen(
 
                 // Action Buttons
                 Button(
-                    onClick = { -> onAnalyseClick(boardFen) },
+                    onClick = { -> onAnalyseClick(boardState.boardFen) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
@@ -369,7 +347,7 @@ suspend fun serverAnalysis(onComplete: (String) -> Unit) {
 
 @Composable
 fun ChessBoard(
-    boardState: Array<Array<Char>>,
+    boardArray: Array<Array<Char>>,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -381,7 +359,7 @@ fun ChessBoard(
             ) {
                 for (col in 0..7) {
                     ChessSquare(
-                        piece = boardState[row][col],
+                        piece = boardArray[row][col],
                         isLightSquare = (row + col) % 2 == 0,
                         modifier = Modifier
                             .weight(1f)
