@@ -102,6 +102,7 @@ fun ChessVisionApp() {
         composable("welcome") {
             WelcomeScreen(
                 onScanBoardClick = { navController.navigate("scan") },
+                onUploadImage = { navController.navigate("boardDetection") },
                 onPreviousAnalysisClick = { navController.navigate("previous") },
                 onSettingsClick = { navController.navigate("settings") }
             )
@@ -117,17 +118,13 @@ fun ChessVisionApp() {
         composable("boardDetection") {
             BoardDetectionScreen(
                 onBackClick = { navController.popBackStack() },
-                onAnalyseClick = { boardFen: String ->
-                    navController.navigate(BoardFEN(boardFen))
-                },
+                onAnalyseClick = { navController.navigate("analysis") },
             )
         }
 
-        composable<BoardFEN> { backStackEntry ->
-            val boardFen: BoardFEN = backStackEntry.toRoute()
+        composable("analysis") {
             AnalysisScreen(
                 onBackClick = { navController.popBackStack() },
-                fenString = boardFen.fen
             )
         }
 
