@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,7 +37,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.ViewModel
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.ComponentActivity
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.ContentCopy
 import kotlinx.coroutines.delay
 
@@ -48,7 +46,7 @@ import com.knightvision.ui.screens.BoardImageViewModel
 import com.knightvision.BoardState
 import com.knightvision.analyseImage
 
-const val STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+const val STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 suspend fun searchPosition(boardFen: String, depth: Int): String = withContext(Dispatchers.Default) {
     Log.e("com.knightvision", "Searching position: $boardFen")
@@ -68,15 +66,16 @@ public class BoardStateViewModel : ViewModel() {
 }
 
 public class BoardEvaluationViewModel : ViewModel() {
-    var boardEval by mutableStateOf<Evaluation>(Evaluation("e2e4", "e7e5", "+0.99"))
+    var boardEval by mutableStateOf(Evaluation("e2e4", "e7e5", "+0.99"))
+    var analysisComplete by mutableStateOf(false)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BoardDetectionScreen(
-    onBackClick: () -> Unit = {},
+    onBackClick: () -> Unit,
     onAnalyseClick: () -> Unit,
-    onEditBoardClick: () -> Unit = {}
+    onEditBoardClick: () -> Unit
 ) {
     val settings: SettingsViewModel = viewModel(LocalContext.current as ComponentActivity)
     val boardImageModel: BoardImageViewModel = viewModel(LocalContext.current as ComponentActivity)
@@ -115,11 +114,11 @@ fun BoardDetectionScreen(
         }
     }
 
-    var analysisComplete by rememberSaveable { mutableStateOf(false) }
     var boardArray by rememberSaveable { mutableStateOf(parseFenToBoard(boardStateModel.boardState.boardFen)) }
-    LaunchedEffect(boardStateModel.boardState, stockfishReady) {
+
+    LaunchedEffect(boardStateModel.boardState, boardEvalModel.analysisComplete, stockfishReady) {
         boardArray = parseFenToBoard(boardStateModel.boardState.boardFen)
-        if (stockfishReady) {
+        if (stockfishReady && !boardEvalModel.analysisComplete) {
             val outputLines = searchPosition(
                 boardStateModel.boardState.boardFen,
                 settings.stockfishDepth
@@ -150,7 +149,7 @@ fun BoardDetectionScreen(
                 boardEvalModel.boardEval = Evaluation(bestmoveParts[1], bestmoveParts[3], cpEval)
             }
 
-            analysisComplete = true
+            boardEvalModel.analysisComplete = true
         }
     }
 
@@ -207,7 +206,7 @@ fun BoardDetectionScreen(
                         .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Position Information Card
                 Card(
@@ -259,14 +258,14 @@ fun BoardDetectionScreen(
                     }
                 }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Action Buttons
                 Button(
                     onClick = { -> if (detectionComplete) onAnalyseClick() },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp),
+                        .height(32.dp),
                     shape = RoundedCornerShape(28.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF4D4B6E)
@@ -286,13 +285,13 @@ fun BoardDetectionScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 OutlinedButton(
-                    onClick = onEditBoardClick, // TODO: add edit board screen
+                    onClick = onEditBoardClick,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp),
+                        .height(32.dp),
                     shape = RoundedCornerShape(28.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = Color(0xFF4D4B6E)
@@ -320,7 +319,7 @@ fun BoardDetectionScreen(
 
     if (!detectionComplete) {
         LoadingOverlay("Detecting board position")
-    } else if (!analysisComplete) {
+    } else if (!boardEvalModel.analysisComplete) {
         LoadingOverlay("Analysing game state")
     }
 }
@@ -442,8 +441,7 @@ fun ChessPiece(piece: Char) {
     }
 
     Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier.fillMaxSize()
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = pieceSymbol,

@@ -56,6 +56,7 @@ import androidx.navigation.toRoute
 import com.knightvision.ui.screens.AnalysisScreen
 import com.knightvision.ui.screens.ScanBoardScreen
 import com.knightvision.ui.screens.BoardDetectionScreen
+import com.knightvision.ui.screens.BoardEditingScreen
 import com.knightvision.ui.screens.WelcomeScreen
 import com.knightvision.ui.screens.SettingsScreen
 import com.knightvision.ui.theme.ChessVisionTheme
@@ -89,10 +90,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@JvmInline
-@Serializable
-value class BoardFEN(val fen: String)
-
 @Composable
 fun ChessVisionApp() {
     val navController = rememberNavController()
@@ -118,6 +115,13 @@ fun ChessVisionApp() {
             BoardDetectionScreen(
                 onBackClick = { navController.popBackStack() },
                 onAnalyseClick = { navController.navigate("analysis") },
+                onEditBoardClick = { navController.navigate("boardEditing") }
+            )
+        }
+
+        composable("boardEditing") {
+            BoardEditingScreen(
+                onSave = { navController.popBackStack() }
             )
         }
 
