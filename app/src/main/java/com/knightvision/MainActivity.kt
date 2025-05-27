@@ -39,7 +39,6 @@ import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.newSingleThreadContext
 import java.util.concurrent.Executors
 import java.io.ByteArrayOutputStream
-import com.knightvision.AnalysisActivity
 import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.fillMaxSize
