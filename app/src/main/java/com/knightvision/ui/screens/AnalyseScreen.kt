@@ -25,7 +25,7 @@ import android.util.Log
 import com.knightvision.ui.screens.BoardStateViewModel
 import com.knightvision.ui.screens.BoardEvaluationViewModel
 
-class Evaluation(val bestMove: String, val ponder: String, val evaluation: String?)
+class Evaluation(val bestMove: String, val ponder: String, val score: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,7 +104,6 @@ fun AnalysisScreen(onBackClick: () -> Unit = {}) {
 
 @Composable
 fun EvaluationTab(evaluation: Evaluation) {
-    var moveSuggestions by remember { mutableStateOf<List<Triple<String, String, String>>>(emptyList()) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -112,10 +111,11 @@ fun EvaluationTab(evaluation: Evaluation) {
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        val score = if (evaluation.score.startsWith("-")) evaluation.score else "+${evaluation.score}"
         AnalysisItemCard(
             "Best move: ${evaluation.bestMove}",
             "Most likely response: ${evaluation.ponder}",
-            evaluation.evaluation
+            "Centipawn score: ${score}"
         )
     }
 }

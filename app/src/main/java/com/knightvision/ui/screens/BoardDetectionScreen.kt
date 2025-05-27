@@ -50,7 +50,7 @@ import com.knightvision.analyseImage
 
 const val STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
 
-suspend fun searchPosition(boardFen: String, depth: Int = 20): String = withContext(Dispatchers.Default) {
+suspend fun searchPosition(boardFen: String, depth: Int): String = withContext(Dispatchers.Default) {
     StockfishBridge.runCmd("position " + boardFen)
     StockfishBridge.goBlocking(depth)
 }
@@ -119,7 +119,10 @@ fun BoardDetectionScreen(
     LaunchedEffect(boardStateModel.boardState, stockfishReady) {
         boardArray = parseFenToBoard(boardStateModel.boardState.boardFen)
         if (stockfishReady) {
-            val outputLines = searchPosition(boardStateModel.boardState.boardFen, 10).split("\n").dropLast(1)
+            val outputLines = searchPosition(
+                boardStateModel.boardState.boardFen,
+                settings.stockfishDepth
+            ).split("\n").dropLast(1)
             val bestmoveParts = outputLines.last().split(" ")
 
             val lastInfo = outputLines.dropLast(2).last()
@@ -133,7 +136,7 @@ fun BoardDetectionScreen(
                     }
                 }
                 Log.e("com.knightvision", "Couldnt find centipawn score in last info: " + lastInfo)
-                null
+                "unknown"
             }
 
             if (bestmoveParts.size < 4) {
