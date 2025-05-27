@@ -19,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,6 +35,7 @@ import java.io.IOException
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.ViewModel
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.platform.LocalContext
@@ -48,9 +50,9 @@ import com.knightvision.analyseImage
 
 const val STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
 
-suspend fun searchPosition(boardFen: String, depth: Int = 20) = withContext(Dispatchers.Default) {
+suspend fun searchPosition(boardFen: String, depth: Int = 20): String = withContext(Dispatchers.Default) {
     StockfishBridge.runCmd("position " + boardFen)
-    StockfishBridge.runCmd("go depth " + depth)
+    StockfishBridge.goBlocking(depth)
 }
 
 fun copyToClipboard(context: Context, text: String) {
@@ -60,16 +62,25 @@ fun copyToClipboard(context: Context, text: String) {
     Toast.makeText(context, "FEN copied to clipboard", Toast.LENGTH_SHORT).show()
 }
 
+public class BoardStateViewModel : ViewModel() {
+    var boardState by mutableStateOf<BoardState>(BoardState(STARTING_FEN))
+}
+
+public class BoardEvaluationViewModel : ViewModel() {
+    var boardEval by mutableStateOf<Evaluation>(Evaluation("e2e4", "e7e5", "+0.99"))
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BoardDetectionScreen(
     onBackClick: () -> Unit = {},
-    onAnalyseClick: (String) -> Unit,
+    onAnalyseClick: () -> Unit,
     onEditBoardClick: () -> Unit = {}
 ) {
     val settings: SettingsViewModel = viewModel(LocalContext.current as ComponentActivity)
     val boardImageModel: BoardImageViewModel = viewModel(LocalContext.current as ComponentActivity)
-    var boardState by remember { mutableStateOf<BoardState>(BoardState(STARTING_FEN)) }
+    var boardStateModel: BoardStateViewModel = viewModel(LocalContext.current as ComponentActivity)
+    var boardEvalModel: BoardEvaluationViewModel = viewModel(LocalContext.current as ComponentActivity)
     var stockfishReady by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -80,29 +91,19 @@ fun BoardDetectionScreen(
         }
     }
 
-    var analysisComplete by remember { mutableStateOf<Boolean>(false)}
-
-    var detectedOpening by remember { mutableStateOf("Starting Position") }
-    var evaluation by remember { mutableStateOf("") }
-    var advantage by remember { mutableStateOf("Equal") }
-
+    var detectionComplete by rememberSaveable { mutableStateOf(false)}
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(boardImageModel.boardImage) {
-        if (boardImageModel.boardImage != null) {
+        if (boardImageModel.boardImage != null && !detectionComplete) {
             try {
-                boardState = analyseImage(
+                boardStateModel.boardState = analyseImage(
                     settings.serverAddress,
                     boardImageModel.boardImage!!,
                     boardImageModel.orientation
                 )
-                if (boardState.openingName != null) {
-                    detectedOpening = boardState.openingName!!
-                } else {
-                    detectedOpening = "Unable to detect opening."
-                }
-                analysisComplete = true
+                detectionComplete = true
             } catch (exc : Exception) {
-                analysisComplete = true
+                detectionComplete = true
                 snackbarHostState.showSnackbar("Failed to extract board position from image.")
                 Log.e(
                     "com.knightvision",
@@ -113,11 +114,39 @@ fun BoardDetectionScreen(
         }
     }
 
-    var boardArray = remember(boardState) { parseFenToBoard(boardState.boardFen) }
-    LaunchedEffect(boardState, stockfishReady) {
-        boardArray = parseFenToBoard(boardState.boardFen)
+    var analysisComplete by rememberSaveable { mutableStateOf(false) }
+    var boardArray by rememberSaveable { mutableStateOf(parseFenToBoard(boardStateModel.boardState.boardFen)) }
+    LaunchedEffect(boardStateModel.boardState, stockfishReady) {
+        boardArray = parseFenToBoard(boardStateModel.boardState.boardFen)
         if (stockfishReady) {
-            searchPosition(boardState.boardFen)
+            val outputLines = searchPosition(boardStateModel.boardState.boardFen, 10).split("\n").dropLast(1)
+            val bestmoveParts = outputLines.last().split(" ")
+
+            val lastInfo = outputLines.dropLast(2).last()
+            var seenCpTag = false
+            val cpEval = run breakval@ {
+                for (part in lastInfo.split(" ")) {
+                    if (seenCpTag) {
+                        return@breakval part
+                    } else if (part == "cp") {
+                        seenCpTag = true
+                    }
+                }
+                Log.e("com.knightvision", "Couldnt find centipawn score in last info: " + lastInfo)
+                null
+            }
+
+            if (bestmoveParts.size < 4) {
+                Log.e("com.knightvision", "Unexpected bestmove output: ${bestmoveParts.joinToString(" ")}")
+            } else {
+                Log.e(
+                    "com.knightvision",
+                    "Successfully set evaluation; bestmove: ${bestmoveParts[1]}, ponder: ${bestmoveParts[3]}, eval: $cpEval"
+                )
+                boardEvalModel.boardEval = Evaluation(bestmoveParts[1], bestmoveParts[3], cpEval)
+            }
+
+            analysisComplete = true
         }
     }
 
@@ -206,7 +235,7 @@ fun BoardDetectionScreen(
 
                     ) {
                         Text(
-                            text = boardState.boardFen,
+                            text = boardStateModel.boardState.boardFen,
                             fontSize = 14.sp,
                             color = Color.DarkGray,
                             maxLines = 1,
@@ -214,7 +243,7 @@ fun BoardDetectionScreen(
                         )
                         val clipboardContext = LocalContext.current
                         IconButton(
-                            onClick = { copyToClipboard(clipboardContext, boardState.boardFen) },
+                            onClick = { copyToClipboard(clipboardContext, boardStateModel.boardState.boardFen) },
                             modifier = Modifier.size(24.dp)
                         ){
                             Icon(
@@ -230,7 +259,7 @@ fun BoardDetectionScreen(
 
                 // Action Buttons
                 Button(
-                    onClick = { -> onAnalyseClick(boardState.boardFen) },
+                    onClick = { -> if (detectionComplete) onAnalyseClick() },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
@@ -285,13 +314,15 @@ fun BoardDetectionScreen(
         }
     }
 
-    if (!analysisComplete) {
-        LoadingOverlay()
+    if (!detectionComplete) {
+        LoadingOverlay("Detecting board position")
+    } else if (!analysisComplete) {
+        LoadingOverlay("Analysing game state")
     }
 }
 
 @Composable
-fun LoadingOverlay() {
+fun LoadingOverlay(message: String) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -322,7 +353,7 @@ fun LoadingOverlay() {
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
-                    text = "Analysing Board Position",
+                    text = message,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF4D4B6E),
