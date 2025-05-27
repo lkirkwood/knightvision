@@ -51,7 +51,8 @@ import com.knightvision.analyseImage
 const val STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
 
 suspend fun searchPosition(boardFen: String, depth: Int): String = withContext(Dispatchers.Default) {
-    StockfishBridge.runCmd("position " + boardFen)
+    Log.e("com.knightvision", "Searching position: $boardFen")
+    StockfishBridge.runCmd("position fen " + boardFen)
     StockfishBridge.goBlocking(depth)
 }
 
