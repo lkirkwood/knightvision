@@ -195,7 +195,7 @@ fun BoardDetectionScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp),
+                    .padding(vertical = 3.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = Color.White
                 ),
@@ -215,7 +215,7 @@ fun BoardDetectionScreen(
                         color = Color.DarkGray,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 12.dp)
+                            .padding(bottom = 10.dp)
                             .align(Alignment.CenterHorizontally),
                         textAlign = TextAlign.Center
                     )
@@ -235,7 +235,7 @@ fun BoardDetectionScreen(
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color.DarkGray,
-                                modifier = Modifier.padding(bottom = 4.dp)
+                                modifier = Modifier.padding(bottom = 3.dp)
                             )
 
                             Row(
@@ -249,7 +249,7 @@ fun BoardDetectionScreen(
                                         text = "0-0",
                                         fontSize = 12.sp,
                                         color = Color.DarkGray,
-                                        modifier = Modifier.padding(bottom = 4.dp)
+                                        modifier = Modifier.padding(bottom = 3.dp)
                                     )
                                     Checkbox(
                                         checked = whiteKingSide,
@@ -268,7 +268,7 @@ fun BoardDetectionScreen(
                                         text = "0-0-0",
                                         fontSize = 12.sp,
                                         color = Color.DarkGray,
-                                        modifier = Modifier.padding(bottom = 4.dp)
+                                        modifier = Modifier.padding(bottom = 3.dp)
                                     )
                                     Checkbox(
                                         checked = whiteQueenSide,
@@ -292,7 +292,7 @@ fun BoardDetectionScreen(
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color.DarkGray,
-                                modifier = Modifier.padding(bottom = 4.dp)
+                                modifier = Modifier.padding(bottom = 3.dp)
                             )
 
                             Row(
@@ -325,7 +325,7 @@ fun BoardDetectionScreen(
                                         text = "0-0-0",
                                         fontSize = 12.sp,
                                         color = Color.DarkGray,
-                                        modifier = Modifier.padding(bottom = 4.dp)
+                                        modifier = Modifier.padding(bottom = 3.dp)
                                     )
                                     Checkbox(
                                         checked = blackQueenSide,
@@ -340,7 +340,7 @@ fun BoardDetectionScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     // Turn Toggle Section
                     Row(
