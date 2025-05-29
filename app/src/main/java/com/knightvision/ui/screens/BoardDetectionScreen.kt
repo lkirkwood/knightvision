@@ -570,11 +570,6 @@ fun LoadingOverlay() {
     }
 }
 
-suspend fun serverAnalysis(onComplete: (String) -> Unit) {
-    val detectedFen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR"
-    onComplete(detectedFen)
-}
-
 @Composable
 fun ChessBoard(
     boardState: Array<Array<Char>>,
