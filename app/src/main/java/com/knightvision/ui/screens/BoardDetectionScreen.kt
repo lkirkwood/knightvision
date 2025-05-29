@@ -75,15 +75,6 @@ fun BoardDetectionScreen(
         }
     }
 
-    // Castling rights state
-    var whiteKingSide by remember { mutableStateOf(true) }
-    var whiteQueenSide by remember { mutableStateOf(true) }
-    var blackKingSide by remember { mutableStateOf(true) }
-    var blackQueenSide by remember { mutableStateOf(true) }
-
-    // Current player state
-    var activePlayer by remember { mutableStateOf('w') }
-
     var detectionComplete by rememberSaveable { mutableStateOf(false)}
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(boardImageModel.boardImage) {
@@ -108,14 +99,6 @@ fun BoardDetectionScreen(
     }
 
     var boardArray by rememberSaveable { mutableStateOf(parseFenToBoard(boardEvalModel.boardState.boardFen)) }
-    val context = LocalContext.current
-    fun copyToClipboard(text: String) {
-        val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clipData = ClipData.newPlainText("FEN String", text)
-        clipboardManager.setPrimaryClip(clipData)
-        Toast.makeText(context, "FEN copied to clipboard", Toast.LENGTH_SHORT).show()
-    }
-
     var lastFen by rememberSaveable { mutableStateOf(boardEvalModel.boardState.boardFen) }
     LaunchedEffect(boardEvalModel.boardState.boardFen) {
         if (boardEvalModel.boardState.boardFen != lastFen) {
@@ -152,16 +135,12 @@ fun BoardDetectionScreen(
 
                 // Castling and Turn Control Card
                 CastlingAndTurnControlCard(
-                    whiteKingSide = whiteKingSide,
-                    onWhiteKingSideChange = { whiteKingSide = it },
-                    whiteQueenSide = whiteQueenSide,
-                    onWhiteQueenSideChange = { whiteQueenSide = it },
-                    blackKingSide = blackKingSide,
-                    onBlackKingSideChange = { blackKingSide = it },
-                    blackQueenSide = blackQueenSide,
-                    onBlackQueenSideChange = { blackQueenSide = it },
-                    activePlayer = activePlayer,
-                    onActivePlayerChange = { activePlayer = it }
+                    parseFenFlags(boardEvalModel.boardState.boardFen),
+                    { flags ->
+                        boardEvalModel.boardState.boardFen = updateFenFlags(
+                            boardEvalModel.boardState.boardFen, flags)
+                        boardEvalModel.setComplete(false)
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -223,13 +202,6 @@ private fun FenStringCard(
 ) {
     val context = LocalContext.current
 
-    fun copyToClipboard(text: String) {
-        val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clipData = ClipData.newPlainText("FEN String", text)
-        clipboardManager.setPrimaryClip(clipData)
-        Toast.makeText(context, "FEN copied to clipboard", Toast.LENGTH_SHORT).show()
-    }
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -267,8 +239,9 @@ private fun FenStringCard(
                     maxLines = 1,
                     modifier = Modifier.weight(1f),
                 )
+
                 IconButton(
-                    onClick = { copyToClipboard(fenString) },
+                    onClick = { copyToClipboard(context, fenString) },
                     modifier = Modifier.size(24.dp)
                 ) {
                     Icon(
@@ -283,18 +256,7 @@ private fun FenStringCard(
 }
 
 @Composable
-fun CastlingAndTurnControlCard(
-    whiteKingSide: Boolean,
-    onWhiteKingSideChange: (Boolean) -> Unit,
-    whiteQueenSide: Boolean,
-    onWhiteQueenSideChange: (Boolean) -> Unit,
-    blackKingSide: Boolean,
-    onBlackKingSideChange: (Boolean) -> Unit,
-    blackQueenSide: Boolean,
-    onBlackQueenSideChange: (Boolean) -> Unit,
-    activePlayer: Char,
-    onActivePlayerChange: (Char) -> Unit
-) {
+fun CastlingAndTurnControlCard(flags: FenFlags, onChanged: (FenFlags) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -311,39 +273,18 @@ fun CastlingAndTurnControlCard(
                 .padding(4.dp)
         ) {
             // Castling Section
-            CastlingSection(
-                whiteKingSide = whiteKingSide,
-                onWhiteKingSideChange = onWhiteKingSideChange,
-                whiteQueenSide = whiteQueenSide,
-                onWhiteQueenSideChange = onWhiteQueenSideChange,
-                blackKingSide = blackKingSide,
-                onBlackKingSideChange = onBlackKingSideChange,
-                blackQueenSide = blackQueenSide,
-                onBlackQueenSideChange = onBlackQueenSideChange
-            )
+            CastlingSection(flags, onChanged)
 
             Spacer(modifier = Modifier.height(4.dp))
 
             // Turn Toggle Section
-            ActivePlayerSection(
-                activePlayer = activePlayer,
-                onActivePlayerChange = onActivePlayerChange
-            )
+            ActivePlayerSection(flags, onChanged)
         }
     }
 }
 
 @Composable
-fun CastlingSection(
-    whiteKingSide: Boolean,
-    onWhiteKingSideChange: (Boolean) -> Unit,
-    whiteQueenSide: Boolean,
-    onWhiteQueenSideChange: (Boolean) -> Unit,
-    blackKingSide: Boolean,
-    onBlackKingSideChange: (Boolean) -> Unit,
-    blackQueenSide: Boolean,
-    onBlackQueenSideChange: (Boolean) -> Unit
-) {
+fun CastlingSection(flags: FenFlags, onChanged: (FenFlags) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly,
@@ -367,14 +308,20 @@ fun CastlingSection(
             ) {
                 CastlingCheckbox(
                     label = "0-0",
-                    checked = whiteKingSide,
-                    onCheckedChange = onWhiteKingSideChange
+                    checked = flags.whiteCastleKing,
+                    onCheckedChange = { checked ->
+                        flags.whiteCastleKing = checked
+                        onChanged(flags)
+                    }
                 )
 
                 CastlingCheckbox(
                     label = "0-0-0",
-                    checked = whiteQueenSide,
-                    onCheckedChange = onWhiteQueenSideChange
+                    checked = flags.whiteCastleQueen,
+                    onCheckedChange = { checked ->
+                        flags.whiteCastleQueen = checked
+                        onChanged(flags)
+                    }
                 )
             }
         }
@@ -397,14 +344,20 @@ fun CastlingSection(
             ) {
                 CastlingCheckbox(
                     label = "0-0",
-                    checked = blackKingSide,
-                    onCheckedChange = onBlackKingSideChange
+                    checked = flags.blackCastleKing,
+                    onCheckedChange = { checked ->
+                        flags.blackCastleKing = checked
+                        onChanged(flags)
+                    }
                 )
 
                 CastlingCheckbox(
                     label = "0-0-0",
-                    checked = blackQueenSide,
-                    onCheckedChange = onBlackQueenSideChange
+                    checked = flags.blackCastleQueen,
+                    onCheckedChange = { checked ->
+                        flags.blackCastleQueen = checked
+                        onChanged(flags)
+                    }
                 )
             }
         }
@@ -426,9 +379,13 @@ fun CastlingCheckbox(
             color = Color.DarkGray,
             modifier = Modifier.padding(bottom = 3.dp)
         )
+        var isChecked by remember { mutableStateOf(checked) }
         Checkbox(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
+            checked = isChecked,
+            onCheckedChange = {
+                isChecked = it
+                onCheckedChange(it)
+            },
             colors = CheckboxDefaults.colors(
                 checkedColor = Color(0xFF4D4B6E)
             ),
@@ -438,10 +395,7 @@ fun CastlingCheckbox(
 }
 
 @Composable
-fun ActivePlayerSection(
-    activePlayer: Char,
-    onActivePlayerChange: (Char) -> Unit
-) {
+fun ActivePlayerSection(flags: FenFlags, onChanged: (FenFlags) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly,
@@ -458,15 +412,20 @@ fun ActivePlayerSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = if (activePlayer == 'w') "White" else "Black",
+                text = if (flags.whiteActive) "White" else "Black",
                 fontSize = 14.sp,
                 color = Color.DarkGray,
                 modifier = Modifier.padding(end = 4.dp)
             )
 
+            var whiteActive by remember { mutableStateOf(flags.whiteActive) }
             Switch(
-                checked = activePlayer == 'b',
-                onCheckedChange = { onActivePlayerChange(if (it) 'b' else 'w') },
+                checked = whiteActive,
+                onCheckedChange = {
+                    whiteActive = it
+                    flags.whiteActive = it
+                    onChanged(flags)
+                },
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
                     checkedTrackColor = Color(0xFF4D4B6E),
@@ -688,12 +647,12 @@ fun parseFenToBoard(fen: String): Array<Array<Char>> {
 }
 
 data class FenFlags(
-    val whiteActive: Boolean,
+    var whiteActive: Boolean,
 
-    val whiteCastleKing: Boolean,
-    val whiteCastleQueen: Boolean,
-    val blackCastleKing: Boolean,
-    val blackCastleQueen: Boolean
+    var whiteCastleKing: Boolean,
+    var whiteCastleQueen: Boolean,
+    var blackCastleKing: Boolean,
+    var blackCastleQueen: Boolean
 )
 
 fun parseFenFlags(fen: String): FenFlags {

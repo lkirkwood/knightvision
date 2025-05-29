@@ -27,6 +27,9 @@ import android.widget.Toast
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 
 import com.knightvision.ui.screens.CastlingAndTurnControlCard
+import com.knightvision.ui.screens.FenFlags
+import com.knightvision.ui.screens.parseFenFlags
+import com.knightvision.ui.screens.updateFenFlags
 import com.knightvision.BoardState
 import com.knightvision.StockfishBridge
 import com.knightvision.BoardEvaluationViewModel
@@ -123,14 +126,8 @@ fun BoardEditingScreen(onSaveClick: () -> Unit, onBackClick: () -> Unit) {
     val context = LocalContext.current
     val boardEditModel: BoardEditViewModel = viewModel(context as ComponentActivity)
     val boardEvalModel: BoardEvaluationViewModel = viewModel(context as ComponentActivity)
+    var flags by remember { mutableStateOf(parseFenFlags(boardEvalModel.boardState.boardFen)) }
 
-    var whiteKingSide by remember { mutableStateOf(true) }
-    var whiteQueenSide by remember { mutableStateOf(true) }
-    var blackKingSide by remember { mutableStateOf(true) }
-    var blackQueenSide by remember { mutableStateOf(true) }
-
-    // Current player state
-    var activePlayer by remember { mutableStateOf('w') }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -139,7 +136,8 @@ fun BoardEditingScreen(onSaveClick: () -> Unit, onBackClick: () -> Unit) {
         Column() {
             BoardEditingTopAppBar(
                 onSaveClick = {
-                    val boardFen = parseBoardToFen(boardEditModel.boardArray)
+                    var boardFen = parseBoardToFen(boardEditModel.boardArray)
+                    boardFen = updateFenFlags(boardFen, flags)
                     if (StockfishBridge.validFen(boardFen)) {
                         boardEvalModel.boardState = BoardState(boardFen)
                         boardEvalModel.setComplete(false)
@@ -157,20 +155,15 @@ fun BoardEditingScreen(onSaveClick: () -> Unit, onBackClick: () -> Unit) {
                     .clip(RoundedCornerShape(8.dp))
                     .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
             )
-            Spacer(Modifier.height(32.dp))
-            PieceSelectionArea()
             Spacer(Modifier.height(16.dp))
+            PieceSelectionArea()
+            Spacer(Modifier.height(8.dp))
             CastlingAndTurnControlCard(
-                whiteKingSide = whiteKingSide,
-                onWhiteKingSideChange = { whiteKingSide = it },
-                whiteQueenSide = whiteQueenSide,
-                onWhiteQueenSideChange = { whiteQueenSide = it },
-                blackKingSide = blackKingSide,
-                onBlackKingSideChange = { blackKingSide = it },
-                blackQueenSide = blackQueenSide,
-                onBlackQueenSideChange = { blackQueenSide = it },
-                activePlayer = activePlayer,
-                onActivePlayerChange = { activePlayer = it }
+                parseFenFlags(boardEvalModel.boardState.boardFen),
+                { newFlags ->
+                    flags = newFlags
+                    boardEvalModel.setComplete(false)
+                }
             )
         }
     }
