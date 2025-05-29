@@ -9,6 +9,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.UploadFile
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,23 +21,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.activity.ComponentActivity
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.net.Uri
 
-@Composable
-fun KnightVisionApp() {
-    WelcomeScreen(
-        onScanBoardClick = {},
-        onPreviousAnalysisClick = {},
-        onSettingsClick = {}
-    )
-}
+import com.knightvision.ui.screens.BoardImageViewModel
 
 @Composable
 fun WelcomeScreen(
     onScanBoardClick: () -> Unit,
+    onUploadImage: () -> Unit,
     onPreviousAnalysisClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
-
+    val boardImgModel: BoardImageViewModel = viewModel(LocalContext.current as ComponentActivity)
 
     Column(
         modifier = Modifier
@@ -76,30 +80,12 @@ fun WelcomeScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Set Board from FEN Button
-            Button(
-                onClick = { /* Add import functionality */ },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(28.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.LightGray
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "Import Icon",
-                    tint = Color.DarkGray
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Set Board from FEN",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.DarkGray
-                )
-            }
+            UploadImage(
+                onUpload = { bitmap ->
+                    boardImgModel.boardImage = bitmap
+                    onUploadImage()
+                }
+            )
 
             IconButton(
                 onClick = onSettingsClick,
@@ -255,12 +241,41 @@ fun ChessBoardIcon() {
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun WelcomeScreenPreview() {
-    WelcomeScreen(
-        onScanBoardClick = {},
-        onPreviousAnalysisClick = {},
-        onSettingsClick = {}
+fun UploadImage(onUpload: (Bitmap) -> Unit) {
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+        onResult = { uri: Uri? ->
+            uri?.let {
+                val source = ImageDecoder.createSource(context.contentResolver, uri)
+                onUpload(ImageDecoder.decodeBitmap(source))
+            }
+        }
     )
+
+    Button(
+        onClick = { launcher.launch("image/*") },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp),
+        shape = RoundedCornerShape(28.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.LightGray
+        )
+    ) {
+        Icon(
+            imageVector = Icons.Default.UploadFile,
+            contentDescription = "Upload image",
+            tint = Color.DarkGray
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "Upload image to analyse",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color.DarkGray
+        )
+    }
 }
+

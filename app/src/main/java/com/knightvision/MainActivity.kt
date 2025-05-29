@@ -39,7 +39,6 @@ import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.newSingleThreadContext
 import java.util.concurrent.Executors
 import java.io.ByteArrayOutputStream
-import com.knightvision.AnalysisActivity
 import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.fillMaxSize
@@ -57,6 +56,7 @@ import androidx.navigation.toRoute
 import com.knightvision.ui.screens.AnalysisScreen
 import com.knightvision.ui.screens.ScanBoardScreen
 import com.knightvision.ui.screens.BoardDetectionScreen
+import com.knightvision.ui.screens.BoardEditingScreen
 import com.knightvision.ui.screens.WelcomeScreen
 import com.knightvision.ui.screens.SettingsScreen
 import com.knightvision.ui.theme.ChessVisionTheme
@@ -90,10 +90,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@JvmInline
-@Serializable
-value class BoardFEN(val fen: String)
-
 @Composable
 fun ChessVisionApp() {
     val navController = rememberNavController()
@@ -102,6 +98,7 @@ fun ChessVisionApp() {
         composable("welcome") {
             WelcomeScreen(
                 onScanBoardClick = { navController.navigate("scan") },
+                onUploadImage = { navController.navigate("boardDetection") },
                 onPreviousAnalysisClick = { navController.navigate("previous") },
                 onSettingsClick = { navController.navigate("settings") }
             )
@@ -117,17 +114,20 @@ fun ChessVisionApp() {
         composable("boardDetection") {
             BoardDetectionScreen(
                 onBackClick = { navController.popBackStack() },
-                onAnalyseClick = { boardFen: String ->
-                    navController.navigate(BoardFEN(boardFen))
-                },
+                onAnalyseClick = { navController.navigate("analysis") },
+                onEditBoardClick = { navController.navigate("boardEditing") }
             )
         }
 
-        composable<BoardFEN> { backStackEntry ->
-            val boardFen: BoardFEN = backStackEntry.toRoute()
+        composable("boardEditing") {
+            BoardEditingScreen(
+                onSave = { navController.popBackStack() }
+            )
+        }
+
+        composable("analysis") {
             AnalysisScreen(
                 onBackClick = { navController.popBackStack() },
-                fenString = boardFen.fen
             )
         }
 

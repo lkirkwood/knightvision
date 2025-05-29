@@ -17,26 +17,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.ComponentActivity
+import androidx.lifecycle.viewmodel.compose.viewModel
+import android.util.Log
 
-import com.knightvision.StockfishBridge
+import com.knightvision.ui.screens.BoardStateViewModel
+import com.knightvision.ui.screens.BoardEvaluationViewModel
+
+class Evaluation(val bestMove: String, val ponder: String, val score: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AnalysisScreen(
-    onBackClick: () -> Unit = {},
-    fenString: String
-) {
-
+fun AnalysisScreen(onBackClick: () -> Unit = {}) {
+    val boardState = viewModel<BoardStateViewModel>(LocalContext.current as ComponentActivity).boardState
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Moves", "Openings")
-    val stockfish = StockfishBridge
-
-    var moves = remember { mutableStateOf<List<String>>(listOf()) }
-
-    LaunchedEffect(Unit) {
-        moves.value = moves.value + stockfish.bestmove()
-    }
-
+    var boardEval = viewModel<BoardEvaluationViewModel>(LocalContext.current as ComponentActivity).boardEval
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -98,23 +95,15 @@ fun AnalysisScreen(
                 .padding(16.dp))
         {
             when (selectedTabIndex) {
-                0 -> MovesContent()
-                1 -> OpeningContent()
+                0 -> EvaluationTab(boardEval)
+                1 -> OpeningContent(boardState.openingName, boardState.openingMoves)
             }
         }
     }
 }
 
 @Composable
-fun MovesContent() {
-    var moveSuggestions by remember { mutableStateOf<List<Triple<String, String, String>>>(emptyList()) }
-    // TODO: Replace with actual data fetch logic
-    LaunchedEffect(Unit) {
-        moveSuggestions = listOf(
-            Triple("e4", "+0.34", "e5") // add api call here
-        )
-    }
-
+fun EvaluationTab(evaluation: Evaluation) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -122,23 +111,21 @@ fun MovesContent() {
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (moveSuggestions.isEmpty()) {
-            Text(
-                text = "Loading suggestions...",
-                fontSize = 14.sp,
-                color = Color.Gray,
-                modifier = Modifier.padding(top = 16.dp)
-            )
-        } else {
-            moveSuggestions.forEach { (move, eval, pondering) ->
-                AnalysisItemCard(move, eval, pondering)
-            }
-        }
+        val score = if (evaluation.score.startsWith("-")) evaluation.score else "+${evaluation.score}"
+        AnalysisItemCard(
+            "Best move: ${evaluation.bestMove}",
+            "Most likely response: ${evaluation.ponder}",
+            "Centipawn score: ${score}"
+        )
     }
 }
 
+fun joinOpeningMoves(moves: List<List<String>>): String {
+    return "Moves: " + moves.mapIndexed { idx, move -> "${idx + 1}. $move" }.joinToString(" ")
+}
+
 @Composable
-fun OpeningContent() {
+fun OpeningContent(openingName: String?, openingMoves: List<List<String>>?) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -146,20 +133,21 @@ fun OpeningContent() {
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        val openingLines = listOf(
-            Triple("Ruy Lopez", "e4 e5 Nf3 Nc6 Bb5", "+0.25") // replace with api call too
-
+        AnalysisItemCard(
+            openingName ?.let { "Opening: $it" } ?: "Unable to detect opening.",
+            openingMoves ?.let { joinOpeningMoves(it) }  ?: ""
         )
-
-        openingLines.forEach { (name, moves, eval) ->
-            AnalysisItemCard(name, eval, "Line: $moves")
-        }
     }
 }
 
 
 @Composable
-fun AnalysisItemCard(move: String, evaluation: String, pondering: String, modifier: Modifier = Modifier) {
+fun AnalysisItemCard(
+    mainText: String,
+    secondaryText: String,
+    tertiaryText: String? = null,
+    modifier: Modifier = Modifier
+) {
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -168,11 +156,13 @@ fun AnalysisItemCard(move: String, evaluation: String, pondering: String, modifi
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = "Move: $move", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(text = mainText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Spacer(modifier = Modifier.height(4.dp))
-            Text(text = "Evaluation: $evaluation", fontSize = 14.sp, color = Color.DarkGray)
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(text = "Pondering: $pondering", fontSize = 14.sp, color = Color.Gray)
+            Text(text = secondaryText, fontSize = 14.sp, color = Color.DarkGray)
+            if (tertiaryText != null) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(text = tertiaryText, fontSize = 14.sp, color = Color.Gray)
+            }
         }
     }
 }

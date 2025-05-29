@@ -7,12 +7,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.*
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
@@ -22,16 +21,20 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.activity.ComponentActivity
+import android.widget.Toast
 
 public class SettingsViewModel : ViewModel() {
     var serverAddress by mutableStateOf("")
+    var stockfishDepth by mutableStateOf(10)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(onBackClick: () -> Unit) {
-    val viewModel: SettingsViewModel = viewModel(LocalContext.current as ComponentActivity)
+    val context = LocalContext.current
+    val viewModel: SettingsViewModel = viewModel(context as ComponentActivity)
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -52,20 +55,50 @@ fun SettingsScreen(onBackClick: () -> Unit) {
             )
         )
 
-        var serverAddress by remember { mutableStateOf(viewModel.serverAddress) }
         val keyboardController = LocalSoftwareKeyboardController.current
+
         TextField(
-            value = serverAddress,
-            onValueChange = { serverAddress = it },
+            value = viewModel.serverAddress,
+            onValueChange = { viewModel.serverAddress = it },
             label = { Text("Address of KnightVision server") },
             modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions.Default.copy(
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
                 imeAction = ImeAction.Done
             ),
             keyboardActions = KeyboardActions(
                 onDone = {
-                    viewModel.serverAddress = serverAddress
                     keyboardController?.hide()
+                }
+            ),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        var stockfishDepth by rememberSaveable { mutableStateOf(viewModel.stockfishDepth.toString()) }
+        TextField(
+            value = stockfishDepth,
+            onValueChange = { newDepth: String ->
+                stockfishDepth = newDepth
+            },
+            label = { Text("Analysis search depth") },
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    if (!stockfishDepth.all { it.isDigit() }) {
+                        Toast.makeText(
+                            context, "Search depth must be a number.", Toast.LENGTH_SHORT
+                        ).show()
+                        stockfishDepth = viewModel.stockfishDepth.toString()
+                    } else {
+                        viewModel.stockfishDepth = stockfishDepth.toInt()
+                        keyboardController?.hide()
+                    }
                 }
             ),
             singleLine = true

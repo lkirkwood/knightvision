@@ -6,21 +6,16 @@ object StockfishBridge {
     }
 
     var enginePtr: Long? = null
-    var bestmoveOutputPtr: Long? = null
 
-    // Issue with code is that on_bestmove is called on static instance of UCIEngine with no bestmove_output value
-    // just pass around pointer to ostream instead
-
-    private external fun _initEngine(): LongArray
+    private external fun _initEngine(): Long
     private external fun runCmd(enginePtr: Long, cmd: String): String
-    private external fun bestmove(enginePtr: Long, outputPtr: Long): String
+    private external fun goBlocking(enginePtr: Long, depth: Int): String
+    external fun validFen(fen: String): Boolean
 
     fun initEngine() {
-        val pointers = _initEngine()
-        enginePtr = pointers[0]
-        bestmoveOutputPtr = pointers[1]
+        enginePtr = _initEngine()
 
-        runCmd("setoption name Threads value 1")
+        // runCmd("setoption name Threads value 1")
     }
 
     // TODO add thread safety to this object
@@ -32,10 +27,10 @@ object StockfishBridge {
         return runCmd(this.enginePtr!!, cmd)
     }
 
-    fun bestmove(): String {
-        if (this.enginePtr == null || this.bestmoveOutputPtr == null) {
-            throw RuntimeException("Trying to get best move from stockfish before initialising engine.")
+    fun goBlocking(depth: Int): String {
+        if (this.enginePtr == null) {
+            throw RuntimeException("Trying to search game tree before initialising engine.")
         }
-        return bestmove(this.enginePtr!!, this.bestmoveOutputPtr!!)
+        return goBlocking(this.enginePtr!!, depth)
     }
 }

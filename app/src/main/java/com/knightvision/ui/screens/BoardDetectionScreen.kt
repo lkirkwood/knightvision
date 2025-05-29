@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -16,9 +17,9 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,11 +35,10 @@ import java.io.IOException
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.ViewModel
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.ComponentActivity
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.ContentCopy
-import kotlinx.coroutines.delay
 
 import com.knightvision.StockfishBridge
 import com.knightvision.ui.screens.SettingsViewModel
@@ -46,11 +46,12 @@ import com.knightvision.ui.screens.BoardImageViewModel
 import com.knightvision.BoardState
 import com.knightvision.analyseImage
 
-const val STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+const val STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
-suspend fun searchPosition(boardFen: String, depth: Int = 20) = withContext(Dispatchers.Default) {
-    StockfishBridge.runCmd("position " + boardFen)
-    StockfishBridge.runCmd("go depth " + depth)
+suspend fun searchPosition(boardFen: String, depth: Int): String = withContext(Dispatchers.Default) {
+    Log.e("com.knightvision", "Searching position: $boardFen")
+    StockfishBridge.runCmd("position fen " + boardFen)
+    StockfishBridge.goBlocking(depth)
 }
 
 fun copyToClipboard(context: Context, text: String) {
@@ -60,16 +61,26 @@ fun copyToClipboard(context: Context, text: String) {
     Toast.makeText(context, "FEN copied to clipboard", Toast.LENGTH_SHORT).show()
 }
 
+public class BoardStateViewModel : ViewModel() {
+    var boardState by mutableStateOf<BoardState>(BoardState(STARTING_FEN))
+}
+
+public class BoardEvaluationViewModel : ViewModel() {
+    var boardEval by mutableStateOf(Evaluation("e2e4", "e7e5", "+0.99"))
+    var analysisComplete by mutableStateOf(false)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BoardDetectionScreen(
-    onBackClick: () -> Unit = {},
-    onAnalyseClick: (String) -> Unit,
-    onEditBoardClick: () -> Unit = {}
+    onBackClick: () -> Unit,
+    onAnalyseClick: () -> Unit,
+    onEditBoardClick: () -> Unit
 ) {
     val settings: SettingsViewModel = viewModel(LocalContext.current as ComponentActivity)
     val boardImageModel: BoardImageViewModel = viewModel(LocalContext.current as ComponentActivity)
-    var boardState by remember { mutableStateOf<BoardState>(BoardState(STARTING_FEN)) }
+    var boardStateModel: BoardStateViewModel = viewModel(LocalContext.current as ComponentActivity)
+    var boardEvalModel: BoardEvaluationViewModel = viewModel(LocalContext.current as ComponentActivity)
     var stockfishReady by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -80,29 +91,28 @@ fun BoardDetectionScreen(
         }
     }
 
-    var analysisComplete by remember { mutableStateOf<Boolean>(false)}
+    // Castling rights state
+    var whiteKingSide by remember { mutableStateOf(true) }
+    var whiteQueenSide by remember { mutableStateOf(true) }
+    var blackKingSide by remember { mutableStateOf(true) }
+    var blackQueenSide by remember { mutableStateOf(true) }
 
-    var detectedOpening by remember { mutableStateOf("Starting Position") }
-    var evaluation by remember { mutableStateOf("") }
-    var advantage by remember { mutableStateOf("Equal") }
+    // Current player state
+    var activePlayer by remember { mutableStateOf('w') }
 
+    var detectionComplete by rememberSaveable { mutableStateOf(false)}
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(boardImageModel.boardImage) {
-        if (boardImageModel.boardImage != null) {
+        if (boardImageModel.boardImage != null && !detectionComplete) {
             try {
-                boardState = analyseImage(
+                boardStateModel.boardState = analyseImage(
                     settings.serverAddress,
                     boardImageModel.boardImage!!,
                     boardImageModel.orientation
                 )
-                if (boardState.openingName != null) {
-                    detectedOpening = boardState.openingName!!
-                } else {
-                    detectedOpening = "Unable to detect opening."
-                }
-                analysisComplete = true
+                detectionComplete = true
             } catch (exc : Exception) {
-                analysisComplete = true
+                detectionComplete = true
                 snackbarHostState.showSnackbar("Failed to extract board position from image.")
                 Log.e(
                     "com.knightvision",
@@ -113,13 +123,51 @@ fun BoardDetectionScreen(
         }
     }
 
-    var boardArray = remember(boardState) { parseFenToBoard(boardState.boardFen) }
-    LaunchedEffect(boardState, stockfishReady) {
-        boardArray = parseFenToBoard(boardState.boardFen)
-        if (stockfishReady) {
-            searchPosition(boardState.boardFen)
+    var boardArray by rememberSaveable { mutableStateOf(parseFenToBoard(boardStateModel.boardState.boardFen)) }
+    val context = LocalContext.current
+    fun copyToClipboard(text: String) {
+        val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clipData = ClipData.newPlainText("FEN String", text)
+        clipboardManager.setPrimaryClip(clipData)
+        Toast.makeText(context, "FEN copied to clipboard", Toast.LENGTH_SHORT).show()
+    }
+
+    LaunchedEffect(boardStateModel.boardState, boardEvalModel.analysisComplete, stockfishReady) {
+        boardArray = parseFenToBoard(boardStateModel.boardState.boardFen)
+        if (stockfishReady && !boardEvalModel.analysisComplete) {
+            val outputLines = searchPosition(
+                boardStateModel.boardState.boardFen,
+                settings.stockfishDepth
+            ).split("\n").dropLast(1)
+            val bestmoveParts = outputLines.last().split(" ")
+
+            val lastInfo = outputLines.dropLast(2).last()
+            var seenCpTag = false
+            val cpEval = run breakval@ {
+                for (part in lastInfo.split(" ")) {
+                    if (seenCpTag) {
+                        return@breakval part
+                    } else if (part == "cp") {
+                        seenCpTag = true
+                    }
+                }
+                Log.e("com.knightvision", "Couldnt find centipawn score in last info: " + lastInfo)
+                "unknown"
+            }
+
+            if (bestmoveParts.size < 4) {
+                Log.e("com.knightvision", "Unexpected bestmove output: ${bestmoveParts.joinToString(" ")}")
+            } else {
+                Log.e(
+                    "com.knightvision",
+                    "Successfully set evaluation; bestmove: ${bestmoveParts[1]}, ponder: ${bestmoveParts[3]}, eval: $cpEval"
+                )
+                boardEvalModel.boardEval = Evaluation(bestmoveParts[1], bestmoveParts[3], cpEval)
+            }
+            boardEvalModel.analysisComplete = true
         }
     }
+
 
 
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) {
@@ -129,169 +177,418 @@ fun BoardDetectionScreen(
                 .background(Color(0xFFF5F5F5))
         ) {
             // Top App Bar
-            TopAppBar(
-                title = { Text("Board Detection") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
-                    }
-                },
-
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF4D4B6E),
-                    titleContentColor = Color.White
-                )
-            )
+            BoardDetectionTopAppBar(onBackClick = onBackClick)
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
+                    .padding(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Detected Position Label
-                Text(
-                    text = "Detected Position:",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.DarkGray,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp)
-                )
-
                 // Chess Board
-                ChessBoard(
-                    boardArray = boardArray,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                        .clip(RoundedCornerShape(8.dp))
-                        .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
-                )
+                BoardDisplay(boardArray)
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Position Information Card
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    elevation = CardDefaults.cardElevation(4.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        Text(
-                            text = "FEN String",
-                            fontSize = 16.sp,
-                            color = Color.DarkGray
-                        )
+                FenStringCard(fenString = boardStateModel.boardState.boardFen)
 
-                    }
+                Spacer(modifier = Modifier.height(8.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                // Castling and Turn Control Card
+                CastlingAndTurnControlCard(
+                    whiteKingSide = whiteKingSide,
+                    onWhiteKingSideChange = { whiteKingSide = it },
+                    whiteQueenSide = whiteQueenSide,
+                    onWhiteQueenSideChange = { whiteQueenSide = it },
+                    blackKingSide = blackKingSide,
+                    onBlackKingSideChange = { blackKingSide = it },
+                    blackQueenSide = blackQueenSide,
+                    onBlackQueenSideChange = { blackQueenSide = it },
+                    activePlayer = activePlayer,
+                    onActivePlayerChange = { activePlayer = it }
+                )
 
-                    ) {
-                        Text(
-                            text = boardState.boardFen,
-                            fontSize = 14.sp,
-                            color = Color.DarkGray,
-                            maxLines = 1,
-                            modifier = Modifier.weight(1f),
-                        )
-                        val clipboardContext = LocalContext.current
-                        IconButton(
-                            onClick = { copyToClipboard(clipboardContext, boardState.boardFen) },
-                            modifier = Modifier.size(24.dp)
-                        ){
-                            Icon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "Copy FEN",
-                                tint = Color(0xFF4D4B6E)
-                            )
-                        }
-                    }
-                }
-
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Action Buttons
-                Button(
-                    onClick = { -> onAnalyseClick(boardState.boardFen) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4D4B6E)
-                    )
+                ActionButtons(
+                    onAnalyseClick = onAnalyseClick,
+                    onEditBoardClick = onEditBoardClick
+                )
+            }
+        }
+    }
+
+    if (!detectionComplete) {
+        LoadingOverlay("Detecting board position")
+    } else if (!boardEvalModel.analysisComplete) {
+        LoadingOverlay("Analysing game state")
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BoardDetectionTopAppBar(
+    onBackClick: () -> Unit
+) {
+    TopAppBar(
+        title = { Text("Board Detection") },
+        navigationIcon = {
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color(0xFF4D4B6E),
+            titleContentColor = Color.White
+        )
+    )
+}
+
+@Composable
+private fun BoardDisplay(
+    boardArray: Array<Array<Char>>
+) {
+    ChessBoard(
+        boardArray = boardArray,
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(4.dp))
+            .border(1.dp, Color.LightGray, RoundedCornerShape(4.dp))
+    )
+}
+
+@Composable
+private fun FenStringCard(
+    fenString: String
+) {
+    val context = LocalContext.current
+
+    fun copyToClipboard(text: String) {
+        val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clipData = ClipData.newPlainText("FEN String", text)
+        clipboardManager.setPrimaryClip(clipData)
+        Toast.makeText(context, "FEN copied to clipboard", Toast.LENGTH_SHORT).show()
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        shape = RoundedCornerShape(4.dp),
+        elevation = CardDefaults.cardElevation(3.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "FEN String",
+                    fontSize = 16.sp,
+                    color = Color.DarkGray
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = fenString,
+                    fontSize = 14.sp,
+                    color = Color.DarkGray,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(
+                    onClick = { copyToClipboard(fenString) },
+                    modifier = Modifier.size(24.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = "Analyse Position Icon",
-                        tint = Color.White
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Analyse Position",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedButton(
-                    onClick = onEditBoardClick, // TODO: add edit board screen
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFF4D4B6E)
-                    ),
-                    border = ButtonDefaults.outlinedButtonBorder.copy(
-                        brush = androidx.compose.ui.graphics.SolidColor(Color(0xFF4D4B6E))
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit Board Icon",
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "Copy FEN",
                         tint = Color(0xFF4D4B6E)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Edit Board",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF4D4B6E)
                     )
                 }
             }
         }
     }
+}
 
-    if (!analysisComplete) {
-        LoadingOverlay()
+@Composable
+private fun CastlingAndTurnControlCard(
+    whiteKingSide: Boolean,
+    onWhiteKingSideChange: (Boolean) -> Unit,
+    whiteQueenSide: Boolean,
+    onWhiteQueenSideChange: (Boolean) -> Unit,
+    blackKingSide: Boolean,
+    onBlackKingSideChange: (Boolean) -> Unit,
+    blackQueenSide: Boolean,
+    onBlackQueenSideChange: (Boolean) -> Unit,
+    activePlayer: Char,
+    onActivePlayerChange: (Char) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        shape = RoundedCornerShape(4.dp),
+        elevation = CardDefaults.cardElevation(3.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(4.dp)
+        ) {
+            // Castling Section
+            CastlingSection(
+                whiteKingSide = whiteKingSide,
+                onWhiteKingSideChange = onWhiteKingSideChange,
+                whiteQueenSide = whiteQueenSide,
+                onWhiteQueenSideChange = onWhiteQueenSideChange,
+                blackKingSide = blackKingSide,
+                onBlackKingSideChange = onBlackKingSideChange,
+                blackQueenSide = blackQueenSide,
+                onBlackQueenSideChange = onBlackQueenSideChange
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Turn Toggle Section
+            ActivePlayerSection(
+                activePlayer = activePlayer,
+                onActivePlayerChange = onActivePlayerChange
+            )
+        }
     }
 }
 
 @Composable
-fun LoadingOverlay() {
+private fun CastlingSection(
+    whiteKingSide: Boolean,
+    onWhiteKingSideChange: (Boolean) -> Unit,
+    whiteQueenSide: Boolean,
+    onWhiteQueenSideChange: (Boolean) -> Unit,
+    blackKingSide: Boolean,
+    onBlackKingSideChange: (Boolean) -> Unit,
+    blackQueenSide: Boolean,
+    onBlackQueenSideChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // White Section castling
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = "White Castling",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.DarkGray
+            )
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CastlingCheckbox(
+                    label = "0-0",
+                    checked = whiteKingSide,
+                    onCheckedChange = onWhiteKingSideChange
+                )
+
+                CastlingCheckbox(
+                    label = "0-0-0",
+                    checked = whiteQueenSide,
+                    onCheckedChange = onWhiteQueenSideChange
+                )
+            }
+        }
+
+        // Black Section castling
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = "Black Castling",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.DarkGray
+            )
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CastlingCheckbox(
+                    label = "0-0",
+                    checked = blackKingSide,
+                    onCheckedChange = onBlackKingSideChange
+                )
+
+                CastlingCheckbox(
+                    label = "0-0-0",
+                    checked = blackQueenSide,
+                    onCheckedChange = onBlackQueenSideChange
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CastlingCheckbox(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = Color.DarkGray,
+            modifier = Modifier.padding(bottom = 3.dp)
+        )
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = CheckboxDefaults.colors(
+                checkedColor = Color(0xFF4D4B6E)
+            ),
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+private fun ActivePlayerSection(
+    activePlayer: Char,
+    onActivePlayerChange: (Char) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Active Player",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color.DarkGray
+        )
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (activePlayer == 'w') "White" else "Black",
+                fontSize = 14.sp,
+                color = Color.DarkGray,
+                modifier = Modifier.padding(end = 4.dp)
+            )
+
+            Switch(
+                checked = activePlayer == 'b',
+                onCheckedChange = { onActivePlayerChange(if (it) 'b' else 'w') },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = Color(0xFF4D4B6E),
+                    uncheckedThumbColor = Color.White,
+                    uncheckedTrackColor = Color.Gray
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun ActionButtons(
+    onAnalyseClick: () -> Unit,
+    onEditBoardClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Button(
+            onClick = onAnalyseClick,
+            modifier = Modifier
+                .weight(1f)
+                .height(56.dp),
+            shape = RoundedCornerShape(28.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF4D4B6E)
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = "Analyse Position Icon",
+                tint = Color.White
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = "Analysis",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White
+            )
+        }
+
+        OutlinedButton(
+            onClick = onEditBoardClick,
+            modifier = Modifier
+                .weight(1f)
+                .height(56.dp),
+            shape = RoundedCornerShape(28.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = Color(0xFF4D4B6E)
+            ),
+            border = ButtonDefaults.outlinedButtonBorder.copy(
+                brush = androidx.compose.ui.graphics.SolidColor(Color(0xFF4D4B6E))
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Default.Edit,
+                contentDescription = "Edit Board Icon",
+                tint = Color(0xFF4D4B6E)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Edit Board",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF4D4B6E)
+            )
+        }
+    }
+}
+
+@Composable
+fun LoadingOverlay(message: String) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -322,7 +619,7 @@ fun LoadingOverlay() {
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
-                    text = "Analysing Board Position",
+                    text = message,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF4D4B6E),
@@ -341,12 +638,6 @@ fun LoadingOverlay() {
             }
         }
     }
-}
-
-suspend fun serverAnalysis(onComplete: (String) -> Unit) {
-
-    val detectedFen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR"
-    onComplete(detectedFen)
 }
 
 @Composable
@@ -407,8 +698,7 @@ fun ChessPiece(piece: Char) {
     }
 
     Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier.fillMaxSize()
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = pieceSymbol,
@@ -443,7 +733,6 @@ fun parseFenToBoard(fen: String): Array<Array<Char>> {
 
     return board
 }
-
 
 @Composable
 fun SimplePieceDrawing(piece: Char, color: Color) {

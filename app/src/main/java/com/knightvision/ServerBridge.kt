@@ -17,8 +17,9 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-public class BoardState(
-    val boardFen: String, val openingName: String? = null, val openingMoves: List<List<String>>? = null)
+public data class BoardState(
+    var boardFen: String, var openingName: String? = null, var openingMoves: List<List<String>>? = null
+)
 
 suspend fun analyseImage(
     serverAddress: String, image: Bitmap, orientation: String
