@@ -332,7 +332,7 @@ private fun FenStringCard(
 }
 
 @Composable
-private fun CastlingAndTurnControlCard(
+fun CastlingAndTurnControlCard(
     whiteKingSide: Boolean,
     onWhiteKingSideChange: (Boolean) -> Unit,
     whiteQueenSide: Boolean,
@@ -383,7 +383,7 @@ private fun CastlingAndTurnControlCard(
 }
 
 @Composable
-private fun CastlingSection(
+fun CastlingSection(
     whiteKingSide: Boolean,
     onWhiteKingSideChange: (Boolean) -> Unit,
     whiteQueenSide: Boolean,
@@ -461,7 +461,7 @@ private fun CastlingSection(
 }
 
 @Composable
-private fun CastlingCheckbox(
+fun CastlingCheckbox(
     label: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
@@ -487,7 +487,7 @@ private fun CastlingCheckbox(
 }
 
 @Composable
-private fun ActivePlayerSection(
+fun ActivePlayerSection(
     activePlayer: Char,
     onActivePlayerChange: (Char) -> Unit
 ) {

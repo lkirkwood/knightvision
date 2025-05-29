@@ -25,6 +25,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.ViewModel
 import android.widget.Toast
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import com.knightvision.ui.screens.CastlingAndTurnControlCard
+
 
 import com.knightvision.BoardState
 import com.knightvision.StockfishBridge
@@ -61,7 +63,25 @@ fun parseBoardToFen(boardArray: Array<Array<Char>>): String {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BoardEditingTopAppBar(onBackClick: () -> Unit) {
+fun BoardEditingTopAppBar(
+    onBackClick: () -> Unit,
+    onSaveClick: () -> Unit
+) {
+    val context = LocalContext.current
+    val boardStateModel: BoardStateViewModel = viewModel(context as ComponentActivity)
+    val boardEditModel: BoardEditViewModel = viewModel(context as ComponentActivity)
+    val boardEvalModel: BoardEvaluationViewModel = viewModel(context as ComponentActivity)
+    boardEditModel.boardArray = parseFenToBoard(boardStateModel.boardState.boardFen)
+    val onSaveClick = {
+        val boardFen = parseBoardToFen(boardEditModel.boardArray)
+        if (StockfishBridge.validFen(boardFen)) {
+            boardStateModel.boardState = BoardState(boardFen)
+            boardEvalModel.analysisComplete = false
+            onSaveClick()
+        } else {
+            Toast.makeText(context, "Invalid board state!", Toast.LENGTH_SHORT).show()
+        }
+    }
     androidx.compose.material3.TopAppBar(
         title = {
             Text(
@@ -70,6 +90,18 @@ fun BoardEditingTopAppBar(onBackClick: () -> Unit) {
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
+        },
+        actions = {
+            IconButton(
+                onClick = onSaveClick
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Save,
+                    contentDescription = "Save edits",
+                    tint = Color.White
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
         },
         navigationIcon = {
             IconButton(onClick = onBackClick) {
@@ -88,19 +120,22 @@ fun BoardEditingTopAppBar(onBackClick: () -> Unit) {
 }
 
 @Composable
-fun BoardEditingScreen(onSave: () -> Unit, onBackClick: () -> Unit) {
-    val context = LocalContext.current
-    val boardStateModel: BoardStateViewModel = viewModel(context as ComponentActivity)
-    val boardEditModel: BoardEditViewModel = viewModel(context as ComponentActivity)
-    val boardEvalModel: BoardEvaluationViewModel = viewModel(context as ComponentActivity)
-    boardEditModel.boardArray = parseFenToBoard(boardStateModel.boardState.boardFen)
+fun BoardEditingScreen(onSaveClick: () -> Unit, onBackClick: () -> Unit) {
+
+    var whiteKingSide by remember { mutableStateOf(true) }
+    var whiteQueenSide by remember { mutableStateOf(true) }
+    var blackKingSide by remember { mutableStateOf(true) }
+    var blackQueenSide by remember { mutableStateOf(true) }
+
+    // Current player state
+    var activePlayer by remember { mutableStateOf('w') }
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF5F5F5))
     ) {
         Column() {
-            BoardEditingTopAppBar(onBackClick= {onBackClick()})
+            BoardEditingTopAppBar(onSaveClick = {onSaveClick()},onBackClick= {onBackClick()})
             EditableChessBoard(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -110,39 +145,20 @@ fun BoardEditingScreen(onSave: () -> Unit, onBackClick: () -> Unit) {
             )
             Spacer(Modifier.height(32.dp))
             PieceSelectionArea()
-            Spacer(Modifier.height(48.dp))
-            OutlinedButton(
-                onClick = {
-                    val boardFen = parseBoardToFen(boardEditModel.boardArray)
-                    if (StockfishBridge.validFen(boardFen)) {
-                        boardStateModel.boardState = BoardState(boardFen)
-                        boardEvalModel.analysisComplete = false
-                        onSave()
-                    } else {
-                        Toast.makeText(context, "Invalid board state!", Toast.LENGTH_SHORT).show()
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(28.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF4D4B6E)
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Save,
-                    contentDescription = "Save edits",
-                    tint = Color.White
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Save",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White
-                )
-            }
+            Spacer(Modifier.height(16.dp))
+            CastlingAndTurnControlCard(
+                whiteKingSide = whiteKingSide,
+                onWhiteKingSideChange = { whiteKingSide = it },
+                whiteQueenSide = whiteQueenSide,
+                onWhiteQueenSideChange = { whiteQueenSide = it },
+                blackKingSide = blackKingSide,
+                onBlackKingSideChange = { blackKingSide = it },
+                blackQueenSide = blackQueenSide,
+                onBlackQueenSideChange = { blackQueenSide = it },
+                activePlayer = activePlayer,
+                onActivePlayerChange = { activePlayer = it }
+            )
+
         }
     }
 }

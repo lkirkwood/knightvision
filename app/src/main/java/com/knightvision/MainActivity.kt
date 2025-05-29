@@ -29,6 +29,7 @@ import com.knightvision.ui.theme.ChessVisionTheme
 class MainActivity : ComponentActivity() {
     private val CAMERA_PERM_REQUEST_CODE = 42
 
+    @RequiresApi(Build.VERSION_CODES.P)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -87,7 +88,7 @@ fun ChessVisionApp() {
         composable("boardEditing") {
             BoardEditingScreen(
                 onBackClick = { navController.popBackStack() },
-                onSave = { navController.popBackStack() }
+                onSaveClick = { navController.popBackStack() }
             )
         }
 
