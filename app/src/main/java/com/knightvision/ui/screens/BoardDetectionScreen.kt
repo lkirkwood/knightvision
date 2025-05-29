@@ -42,33 +42,17 @@ import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.filled.ContentCopy
 
 import com.knightvision.StockfishBridge
+import com.knightvision.BoardEvaluationViewModel
 import com.knightvision.ui.screens.SettingsViewModel
 import com.knightvision.ui.screens.BoardImageViewModel
 import com.knightvision.BoardState
 import com.knightvision.analyseImage
-
-const val STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-
-suspend fun searchPosition(boardFen: String, depth: Int): String = withContext(Dispatchers.Default) {
-    Log.e("com.knightvision", "Searching position: $boardFen")
-    StockfishBridge.runCmd("position fen " + boardFen)
-    StockfishBridge.goBlocking(depth)
-}
 
 fun copyToClipboard(context: Context, text: String) {
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val clipData = ClipData.newPlainText("FEN String", text)
     clipboardManager.setPrimaryClip(clipData)
     Toast.makeText(context, "FEN copied to clipboard", Toast.LENGTH_SHORT).show()
-}
-
-public class BoardStateViewModel : ViewModel() {
-    var boardState by mutableStateOf<BoardState>(BoardState(STARTING_FEN))
-}
-
-public class BoardEvaluationViewModel : ViewModel() {
-    var boardEval by mutableStateOf(Evaluation("e2e4", "e7e5", "+0.99"))
-    var analysisComplete by mutableStateOf(false)
 }
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -81,15 +65,13 @@ fun BoardDetectionScreen(
 ) {
     val settings: SettingsViewModel = viewModel(LocalContext.current as ComponentActivity)
     val boardImageModel: BoardImageViewModel = viewModel(LocalContext.current as ComponentActivity)
-    var boardStateModel: BoardStateViewModel = viewModel(LocalContext.current as ComponentActivity)
     var boardEvalModel: BoardEvaluationViewModel = viewModel(LocalContext.current as ComponentActivity)
-    var stockfishReady by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             StockfishBridge.initEngine()
             StockfishBridge.runCmd("uci")
-            stockfishReady = true
+            boardEvalModel.setReady(true)
         }
     }
 
@@ -107,7 +89,7 @@ fun BoardDetectionScreen(
     LaunchedEffect(boardImageModel.boardImage) {
         if (boardImageModel.boardImage != null && !detectionComplete) {
             try {
-                boardStateModel.boardState = analyseImage(
+                boardEvalModel.boardState = analyseImage(
                     settings.serverAddress,
                     boardImageModel.boardImage!!,
                     boardImageModel.orientation
@@ -125,7 +107,7 @@ fun BoardDetectionScreen(
         }
     }
 
-    var boardArray by rememberSaveable { mutableStateOf(parseFenToBoard(boardStateModel.boardState.boardFen)) }
+    var boardArray by rememberSaveable { mutableStateOf(parseFenToBoard(boardEvalModel.boardState.boardFen)) }
     val context = LocalContext.current
     fun copyToClipboard(text: String) {
         val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -134,47 +116,12 @@ fun BoardDetectionScreen(
         Toast.makeText(context, "FEN copied to clipboard", Toast.LENGTH_SHORT).show()
     }
 
-    var lastFen by rememberSaveable { mutableStateOf(boardStateModel.boardState.boardFen) }
-    LaunchedEffect(boardStateModel.boardState.boardFen) {
-        if (boardStateModel.boardState.boardFen != lastFen) {
-            lastFen = boardStateModel.boardState.boardFen
-            boardArray = parseFenToBoard(boardStateModel.boardState.boardFen)
-            boardEvalModel.analysisComplete = false
-        }
-    }
-
-    LaunchedEffect(stockfishReady, boardEvalModel.analysisComplete) {
-        if (stockfishReady && !boardEvalModel.analysisComplete) {
-            val outputLines = searchPosition(
-                boardStateModel.boardState.boardFen,
-                settings.stockfishDepth
-            ).split("\n").dropLast(1)
-            val bestmoveParts = outputLines.last().split(" ")
-
-            val lastInfo = outputLines.dropLast(2).last()
-            var seenCpTag = false
-            val cpEval = run breakval@ {
-                for (part in lastInfo.split(" ")) {
-                    if (seenCpTag) {
-                        return@breakval part
-                    } else if (part == "cp") {
-                        seenCpTag = true
-                    }
-                }
-                Log.e("com.knightvision", "Couldnt find centipawn score in last info: " + lastInfo)
-                "unknown"
-            }
-
-            if (bestmoveParts.size < 4) {
-                Log.e("com.knightvision", "Unexpected bestmove output: ${bestmoveParts.joinToString(" ")}")
-            } else {
-                Log.e(
-                    "com.knightvision",
-                    "Successfully set evaluation; bestmove: ${bestmoveParts[1]}, ponder: ${bestmoveParts[3]}, eval: $cpEval"
-                )
-                boardEvalModel.boardEval = Evaluation(bestmoveParts[1], bestmoveParts[3], cpEval)
-            }
-            boardEvalModel.analysisComplete = true
+    var lastFen by rememberSaveable { mutableStateOf(boardEvalModel.boardState.boardFen) }
+    LaunchedEffect(boardEvalModel.boardState.boardFen) {
+        if (boardEvalModel.boardState.boardFen != lastFen) {
+            lastFen = boardEvalModel.boardState.boardFen
+            boardArray = parseFenToBoard(boardEvalModel.boardState.boardFen)
+            boardEvalModel.setComplete(false)
         }
     }
 
@@ -199,7 +146,7 @@ fun BoardDetectionScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Position Information Card
-                FenStringCard(fenString = boardStateModel.boardState.boardFen)
+                FenStringCard(fenString = boardEvalModel.boardState.boardFen)
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -230,8 +177,6 @@ fun BoardDetectionScreen(
 
     if (!detectionComplete) {
         LoadingOverlay("Detecting board position")
-    } else if (!boardEvalModel.analysisComplete) {
-        LoadingOverlay("Analysing game state")
     }
 }
 
@@ -740,6 +685,50 @@ fun parseFenToBoard(fen: String): Array<Array<Char>> {
     }
 
     return board
+}
+
+data class FenFlags(
+    val whiteActive: Boolean,
+
+    val whiteCastleKing: Boolean,
+    val whiteCastleQueen: Boolean,
+    val blackCastleKing: Boolean,
+    val blackCastleQueen: Boolean
+)
+
+fun parseFenFlags(fen: String): FenFlags {
+    val parts = fen.split(" ")
+    val active = parts[1]
+    val castling = parts[2]
+    return FenFlags(
+        active == "w",
+        castling.contains('K'),
+        castling.contains('Q'),
+        castling.contains('k'),
+        castling.contains('q'),
+    )
+}
+
+fun updateFenFlags(fen: String, flags: FenFlags): String {
+    var parts = fen.split(" ").toTypedArray()
+    parts[1] = if (flags.whiteActive) "w" else "b"
+
+    var castling = StringBuilder()
+    if (flags.whiteCastleKing) {
+        castling.append('K')
+    }
+    if (flags.whiteCastleQueen) {
+        castling.append('Q')
+    }
+    if (flags.blackCastleKing) {
+        castling.append('k')
+    }
+    if (flags.blackCastleQueen) {
+        castling.append('q')
+    }
+    parts[2] = castling.toString()
+
+    return parts.joinToString(" ")
 }
 
 @Composable

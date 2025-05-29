@@ -25,11 +25,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.ViewModel
 import android.widget.Toast
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+
 import com.knightvision.ui.screens.CastlingAndTurnControlCard
-
-
 import com.knightvision.BoardState
 import com.knightvision.StockfishBridge
+import com.knightvision.BoardEvaluationViewModel
 
 class BoardEditViewModel : ViewModel() {
     var currentPiece by mutableStateOf('.')
@@ -68,14 +68,13 @@ fun BoardEditingTopAppBar(
     onSaveClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val boardStateModel: BoardStateViewModel = viewModel(context as ComponentActivity)
     val boardEditModel: BoardEditViewModel = viewModel(context as ComponentActivity)
     val boardEvalModel: BoardEvaluationViewModel = viewModel(context as ComponentActivity)
-    boardEditModel.boardArray = parseFenToBoard(boardStateModel.boardState.boardFen)
+    boardEditModel.boardArray = parseFenToBoard(boardEvalModel.boardState.boardFen)
     val onSaveClick = {
         val boardFen = parseBoardToFen(boardEditModel.boardArray)
         if (StockfishBridge.validFen(boardFen)) {
-            boardStateModel.boardState = BoardState(boardFen)
+            boardEvalModel.boardState = BoardState(boardFen)
             boardEvalModel.analysisComplete = false
             onSaveClick()
         } else {
@@ -121,6 +120,9 @@ fun BoardEditingTopAppBar(
 
 @Composable
 fun BoardEditingScreen(onSaveClick: () -> Unit, onBackClick: () -> Unit) {
+    val context = LocalContext.current
+    val boardEditModel: BoardEditViewModel = viewModel(context as ComponentActivity)
+    val boardEvalModel: BoardEvaluationViewModel = viewModel(context as ComponentActivity)
 
     var whiteKingSide by remember { mutableStateOf(true) }
     var whiteQueenSide by remember { mutableStateOf(true) }
@@ -135,7 +137,19 @@ fun BoardEditingScreen(onSaveClick: () -> Unit, onBackClick: () -> Unit) {
             .background(Color(0xFFF5F5F5))
     ) {
         Column() {
-            BoardEditingTopAppBar(onSaveClick = {onSaveClick()},onBackClick= {onBackClick()})
+            BoardEditingTopAppBar(
+                onSaveClick = {
+                    val boardFen = parseBoardToFen(boardEditModel.boardArray)
+                    if (StockfishBridge.validFen(boardFen)) {
+                        boardEvalModel.boardState = BoardState(boardFen)
+                        boardEvalModel.setComplete(false)
+                        onSaveClick()
+                    } else {
+                        Toast.makeText(context, "Invalid board state!", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onBackClick = { onBackClick() }
+            )
             EditableChessBoard(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -158,7 +172,6 @@ fun BoardEditingScreen(onSaveClick: () -> Unit, onBackClick: () -> Unit) {
                 activePlayer = activePlayer,
                 onActivePlayerChange = { activePlayer = it }
             )
-
         }
     }
 }

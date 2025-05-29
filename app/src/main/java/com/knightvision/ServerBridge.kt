@@ -17,7 +17,7 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-public data class BoardState(
+data class BoardState(
     var boardFen: String, var openingName: String? = null, var openingMoves: List<List<String>>? = null
 )
 

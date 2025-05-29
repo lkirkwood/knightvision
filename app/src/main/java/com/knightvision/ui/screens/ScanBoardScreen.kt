@@ -85,7 +85,7 @@ fun setupCamera(
     }
 }
 
-public class BoardImageViewModel : ViewModel() {
+class BoardImageViewModel : ViewModel() {
     var boardImage by mutableStateOf<Bitmap?>(null)
     var orientation by mutableStateOf<String>("left")
 }

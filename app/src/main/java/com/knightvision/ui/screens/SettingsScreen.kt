@@ -25,7 +25,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.activity.ComponentActivity
 import android.widget.Toast
 
-public class SettingsViewModel : ViewModel() {
+class SettingsViewModel : ViewModel() {
     var serverAddress by mutableStateOf("")
     var stockfishDepth by mutableStateOf(10)
 }

@@ -20,17 +20,18 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import android.util.Log
 
-import com.knightvision.ui.screens.BoardStateViewModel
-import com.knightvision.ui.screens.BoardEvaluationViewModel
-
-class Evaluation(val bestMove: String, val ponder: String, val score: String)
+import com.knightvision.BoardEvaluationViewModel
+import com.knightvision.Evaluation
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalysisScreen(onBackClick: () -> Unit = {}) {
-    val boardState = viewModel<BoardStateViewModel>(LocalContext.current as ComponentActivity).boardState
+    val boardEvalModel: BoardEvaluationViewModel = viewModel(LocalContext.current as ComponentActivity)
+    val boardState = boardEvalModel.boardState
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Moves", "Openings")
     var boardEval = viewModel<BoardEvaluationViewModel>(LocalContext.current as ComponentActivity).boardEval
@@ -99,6 +100,10 @@ fun AnalysisScreen(onBackClick: () -> Unit = {}) {
                 1 -> OpeningContent(boardState.openingName, boardState.openingMoves)
             }
         }
+    }
+
+    if (!boardEvalModel.analysisComplete) {
+        LoadingOverlay("Analysing game state")
     }
 }
 
