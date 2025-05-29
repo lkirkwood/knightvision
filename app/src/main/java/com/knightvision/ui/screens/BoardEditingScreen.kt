@@ -3,7 +3,6 @@ package com.knightvision.ui.screens
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
@@ -18,17 +17,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Save
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.ViewModel
 import android.widget.Toast
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 
-import com.knightvision.ui.screens.ChessPiece
 import com.knightvision.BoardState
 import com.knightvision.StockfishBridge
 
@@ -62,56 +59,90 @@ fun parseBoardToFen(boardArray: Array<Array<Char>>): String {
     return fenBuilder.toString() + " w KQkq - 0 1" // TODO add who-to-move and castling
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BoardEditingScreen(onSave: () -> Unit) {
+fun BoardEditingTopAppBar(onBackClick: () -> Unit) {
+    androidx.compose.material3.TopAppBar(
+        title = {
+            Text(
+                text = "Board Editing",
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color(0xFF4D4B6E),
+            titleContentColor = Color.White
+        )
+    )
+}
+
+@Composable
+fun BoardEditingScreen(onSave: () -> Unit, onBackClick: () -> Unit) {
     val context = LocalContext.current
     val boardStateModel: BoardStateViewModel = viewModel(context as ComponentActivity)
     val boardEditModel: BoardEditViewModel = viewModel(context as ComponentActivity)
     val boardEvalModel: BoardEvaluationViewModel = viewModel(context as ComponentActivity)
     boardEditModel.boardArray = parseFenToBoard(boardStateModel.boardState.boardFen)
-
-    Column() {
-        EditableChessBoard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(8.dp))
-                .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
-        )
-        Spacer(Modifier.height(32.dp))
-        PieceSelectionArea()
-        Spacer(Modifier.height(48.dp))
-        OutlinedButton(
-            onClick = {
-                val boardFen = parseBoardToFen(boardEditModel.boardArray)
-                if (StockfishBridge.validFen(boardFen)) {
-                    boardStateModel.boardState = BoardState(boardFen)
-                    boardEvalModel.analysisComplete = false
-                    onSave()
-                } else {
-                    Toast.makeText(context, "Invalid board state!", Toast.LENGTH_SHORT).show()
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(28.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF4D4B6E)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF5F5F5))
+    ) {
+        Column() {
+            BoardEditingTopAppBar(onBackClick= {onBackClick()})
+            EditableChessBoard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
             )
-        ) {
-            Icon(
-                imageVector = Icons.Default.Save,
-                contentDescription = "Save edits",
-                tint = Color.White
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Save",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.White
-            )
+            Spacer(Modifier.height(32.dp))
+            PieceSelectionArea()
+            Spacer(Modifier.height(48.dp))
+            OutlinedButton(
+                onClick = {
+                    val boardFen = parseBoardToFen(boardEditModel.boardArray)
+                    if (StockfishBridge.validFen(boardFen)) {
+                        boardStateModel.boardState = BoardState(boardFen)
+                        boardEvalModel.analysisComplete = false
+                        onSave()
+                    } else {
+                        Toast.makeText(context, "Invalid board state!", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(28.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF4D4B6E)
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Save,
+                    contentDescription = "Save edits",
+                    tint = Color.White
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Save",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White
+                )
+            }
         }
     }
 }

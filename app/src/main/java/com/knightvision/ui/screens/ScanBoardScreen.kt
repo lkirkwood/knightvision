@@ -50,6 +50,8 @@ import androidx.activity.ComponentActivity
 import androidx.camera.view.PreviewView
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -87,7 +89,33 @@ public class BoardImageViewModel : ViewModel() {
     var boardImage by mutableStateOf<Bitmap?>(null)
     var orientation by mutableStateOf<String>("left")
 }
-
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ScanBoardTopAppBar(onBackClick: () -> Unit) {
+    androidx.compose.material3.TopAppBar(
+        title = {
+            Text(
+                text = "Scan Board",
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color(0xFF4D4B6E),
+            titleContentColor = Color.White
+        )
+    )
+}
 @Composable
 fun ScanBoardScreen(
     onBackClick: () -> Unit = {},
@@ -160,38 +188,7 @@ fun ScanBoardScreen(
             .fillMaxSize()
             .background(Color(0xFFF5F5F5))
     ) {
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .background(Color(0xFF4D4B6E))
-                .padding(horizontal = 16.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = Color.White
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Text(
-                    text = "Scan Board",
-                    color = Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
+        ScanBoardTopAppBar(onBackClick = onBackClick)
         // Camera Preview Area
         BoxWithConstraints(
             modifier = Modifier

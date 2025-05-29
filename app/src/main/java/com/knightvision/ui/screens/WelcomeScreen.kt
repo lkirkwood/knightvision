@@ -29,9 +29,12 @@ import androidx.activity.ComponentActivity
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.net.Uri
+import android.os.Build
+import androidx.annotation.RequiresApi
 
 import com.knightvision.ui.screens.BoardImageViewModel
 
+@RequiresApi(Build.VERSION_CODES.P)
 @Composable
 fun WelcomeScreen(
     onScanBoardClick: () -> Unit,
@@ -46,7 +49,7 @@ fun WelcomeScreen(
             .fillMaxSize()
             .background(Color(0xFFF5F5F5))
     ) {
-        TopAppBar()
+        TopAppBar(onSettingsClick = onSettingsClick)
 
         Spacer(modifier = Modifier.height(64.dp))
 
@@ -87,15 +90,6 @@ fun WelcomeScreen(
                 }
             )
 
-            IconButton(
-                onClick = onSettingsClick,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Settings,
-                    contentDescription = "Settings"
-                )
-            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -138,36 +132,34 @@ fun WelcomeScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TopAppBar() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp)
-            .background(Color(0xFF4D4B6E))
-            .padding(horizontal = 16.dp),
-        contentAlignment = Alignment.CenterStart
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // add app icon here
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Text(
-                    text = "KnightVision",
-                    color = Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
+fun TopAppBar(onSettingsClick: () -> Unit) {
+    androidx.compose.material3.TopAppBar(
+        title = {
+            Text(
+                text = "KnightVision",
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        actions = {
+            IconButton(
+                onClick = onSettingsClick
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Settings",
+                    tint = Color.White
                 )
             }
-        }
-    }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color(0xFF4D4B6E),
+            titleContentColor = Color.White
+        )
+    )
 }
 
 @Composable
@@ -241,6 +233,7 @@ fun ChessBoardIcon() {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.P)
 @Composable
 fun UploadImage(onUpload: (Bitmap) -> Unit) {
     val context = LocalContext.current

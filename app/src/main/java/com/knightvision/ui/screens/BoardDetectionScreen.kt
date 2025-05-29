@@ -1,5 +1,6 @@
 package com.knightvision.ui.screens
 
+import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -70,6 +71,7 @@ public class BoardEvaluationViewModel : ViewModel() {
     var analysisComplete by mutableStateOf(false)
 }
 
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BoardDetectionScreen(

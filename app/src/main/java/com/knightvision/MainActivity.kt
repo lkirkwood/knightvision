@@ -1,57 +1,21 @@
 package com.knightvision
 
 import android.os.Bundle
-import android.os.Build
-import android.view.ViewGroup
-import android.content.Context
 import android.content.pm.PackageManager
-import android.Manifest
+import android.os.Build
 import android.widget.Toast
-import android.graphics.Color
-import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.Text
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalContext
-import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.core.Preview
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageProxy
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.view.PreviewView
-import androidx.core.content.ContextCompat
-import androidx.core.app.ActivityCompat
 import androidx.activity.compose.setContent
-import androidx.lifecycle.LifecycleOwner
-import com.google.common.util.concurrent.ListenableFuture
-import kotlinx.coroutines.newSingleThreadContext
-import java.util.concurrent.Executors
-import java.io.ByteArrayOutputStream
-import android.content.Intent
 import androidx.activity.ComponentActivity
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
-import kotlinx.serialization.Serializable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.navArgument
-import androidx.navigation.NavType
-import androidx.navigation.toRoute
 
 import com.knightvision.ui.screens.AnalysisScreen
 import com.knightvision.ui.screens.ScanBoardScreen
@@ -90,6 +54,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.P)
 @Composable
 fun ChessVisionApp() {
     val navController = rememberNavController()
@@ -121,6 +86,7 @@ fun ChessVisionApp() {
 
         composable("boardEditing") {
             BoardEditingScreen(
+                onBackClick = { navController.popBackStack() },
                 onSave = { navController.popBackStack() }
             )
         }
