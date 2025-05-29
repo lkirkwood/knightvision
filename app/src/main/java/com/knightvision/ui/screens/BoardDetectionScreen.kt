@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.ContentCopy
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BoardDetectionScreen(
@@ -39,7 +38,6 @@ fun BoardDetectionScreen(
     fenString: String = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR", // Default starting position
     isAnalysing: Boolean = true
 ) {
-
     var analysisComplete by remember { mutableStateOf(!isAnalysing)}
     var currentFenString by remember { mutableStateOf(if (isAnalysing) "" else fenString) }
 
@@ -51,6 +49,7 @@ fun BoardDetectionScreen(
 
     // Current player state
     var activePlayer by remember { mutableStateOf('w') }
+
     LaunchedEffect(imageUri) {
         if (imageUri.isNotEmpty() && isAnalysing){
             // process image here
@@ -64,6 +63,7 @@ fun BoardDetectionScreen(
             analysisComplete = true
         }
     }
+
     // State for board information
     var detectedOpening by remember { mutableStateOf("Starting Position") }
     var piecesDetected by remember { mutableStateOf("32/32") }
@@ -74,13 +74,6 @@ fun BoardDetectionScreen(
     val boardState = remember(currentFenString) {
         if (currentFenString.isNotEmpty()) parseFenToBoard(currentFenString) else parseFenToBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")
     }
-    val context = LocalContext.current
-    fun copyToClipboard(text: String) {
-        val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clipData = ClipData.newPlainText("FEN String", text)
-        clipboardManager.setPrimaryClip(clipData)
-        Toast.makeText(context, "FEN copied to clipboard", Toast.LENGTH_SHORT).show()
-    }
 
     Column(
         modifier = Modifier
@@ -88,23 +81,7 @@ fun BoardDetectionScreen(
             .background(Color(0xFFF5F5F5))
     ) {
         // Top App Bar
-        TopAppBar(
-            title = { Text("Board Detection") },
-            navigationIcon = {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = Color.White
-                    )
-                }
-            },
-
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color(0xFF4D4B6E),
-                titleContentColor = Color.White
-            )
-        )
+        BoardDetectionTopAppBar(onBackClick = onBackClick)
 
         Column(
             modifier = Modifier
@@ -113,339 +90,433 @@ fun BoardDetectionScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Detected Position Label
-            Text(
-                text = "Detected Position:",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.DarkGray,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 4.dp)
-            )
+            DetectedPositionLabel()
 
             // Chess Board
-            ChessBoard(
-                boardState = boardState,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(4.dp))
-                    .border(1.dp, Color.LightGray, RoundedCornerShape(4.dp))
-            )
+            BoardDisplay(boardState = boardState)
 
             Spacer(modifier = Modifier.height(14.dp))
 
             // Position Information Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(4.dp),
-                elevation = CardDefaults.cardElevation(3.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "FEN String",
-                            fontSize = 16.sp,
-                            color = Color.DarkGray
-                        )
-
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-
-                    ) {
-                        Text(
-                            text = fenString,
-                            fontSize = 14.sp,
-                            color = Color.DarkGray,
-                            maxLines = 1,
-                            modifier = Modifier.weight(1f),
-                        )
-                        IconButton(
-                            onClick = { copyToClipboard(fenString) },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "Copy FEN",
-                                tint = Color(0xFF4D4B6E)
-                            )
-                        }
-                    }
-                }
-            }
+            FenStringCard(fenString = fenString)
 
             Spacer(modifier = Modifier.height(12.dp))
 
             // Castling and Turn Control Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 3.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(4.dp),
-                elevation = CardDefaults.cardElevation(3.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp)
-                ) {
-                    // Castling Section
-                    Text(
-                        text = "Castling",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.DarkGray,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 10.dp)
-                            .align(Alignment.CenterHorizontally),
-                        textAlign = TextAlign.Center
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // White Section
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = "White",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color.DarkGray,
-                                modifier = Modifier.padding(bottom = 3.dp)
-                            )
-
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(
-                                        text = "0-0",
-                                        fontSize = 12.sp,
-                                        color = Color.DarkGray,
-                                        modifier = Modifier.padding(bottom = 3.dp)
-                                    )
-                                    Checkbox(
-                                        checked = whiteKingSide,
-                                        onCheckedChange = { whiteKingSide = it },
-                                        colors = CheckboxDefaults.colors(
-                                            checkedColor = Color(0xFF4D4B6E)
-                                        ),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(
-                                        text = "0-0-0",
-                                        fontSize = 12.sp,
-                                        color = Color.DarkGray,
-                                        modifier = Modifier.padding(bottom = 3.dp)
-                                    )
-                                    Checkbox(
-                                        checked = whiteQueenSide,
-                                        onCheckedChange = { whiteQueenSide = it },
-                                        colors = CheckboxDefaults.colors(
-                                            checkedColor = Color(0xFF4D4B6E)
-                                        ),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        // Black Section
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = "Black",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color.DarkGray,
-                                modifier = Modifier.padding(bottom = 3.dp)
-                            )
-
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(
-                                        text = "0-0",
-                                        fontSize = 12.sp,
-                                        color = Color.DarkGray,
-                                        modifier = Modifier.padding(bottom = 4.dp)
-                                    )
-                                    Checkbox(
-                                        checked = blackKingSide,
-                                        onCheckedChange = { blackKingSide = it },
-                                        colors = CheckboxDefaults.colors(
-                                            checkedColor = Color(0xFF4D4B6E)
-                                        ),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(
-                                        text = "0-0-0",
-                                        fontSize = 12.sp,
-                                        color = Color.DarkGray,
-                                        modifier = Modifier.padding(bottom = 3.dp)
-                                    )
-                                    Checkbox(
-                                        checked = blackQueenSide,
-                                        onCheckedChange = { blackQueenSide = it },
-                                        colors = CheckboxDefaults.colors(
-                                            checkedColor = Color(0xFF4D4B6E)
-                                        ),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Turn Toggle Section
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Active Player",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.DarkGray
-                        )
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = if (activePlayer == 'w') "White" else "Black",
-                                fontSize = 14.sp,
-                                color = Color.DarkGray,
-                                modifier = Modifier.padding(end = 4.dp)
-                            )
-
-                            Switch(
-                                checked = activePlayer == 'b',
-                                onCheckedChange = { activePlayer = if (it) 'b' else 'w' },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.White,
-                                    checkedTrackColor = Color(0xFF4D4B6E),
-                                    uncheckedThumbColor = Color.White,
-                                    uncheckedTrackColor = Color.Gray
-                                )
-                            )
-                        }
-                    }
-                }
-            }
+            CastlingAndTurnControlCard(
+                whiteKingSide = whiteKingSide,
+                onWhiteKingSideChange = { whiteKingSide = it },
+                whiteQueenSide = whiteQueenSide,
+                onWhiteQueenSideChange = { whiteQueenSide = it },
+                blackKingSide = blackKingSide,
+                onBlackKingSideChange = { blackKingSide = it },
+                blackQueenSide = blackQueenSide,
+                onBlackQueenSideChange = { blackQueenSide = it },
+                activePlayer = activePlayer,
+                onActivePlayerChange = { activePlayer = it }
+            )
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Action Buttons
+            ActionButtons(
+                onAnalyseClick = onAnalyseClick,
+                onEditBoardClick = onEditBoardClick
+            )
+        }
+    }
+
+    if (!analysisComplete) {
+        LoadingOverlay()
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BoardDetectionTopAppBar(
+    onBackClick: () -> Unit
+) {
+    TopAppBar(
+        title = { Text("Board Detection") },
+        navigationIcon = {
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color(0xFF4D4B6E),
+            titleContentColor = Color.White
+        )
+    )
+}
+
+@Composable
+private fun DetectedPositionLabel() {
+    Text(
+        text = "Detected Position:",
+        fontSize = 16.sp,
+        fontWeight = FontWeight.Medium,
+        color = Color.DarkGray,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 4.dp)
+    )
+}
+
+@Composable
+private fun BoardDisplay(
+    boardState: Array<Array<Char>>
+) {
+    ChessBoard(
+        boardState = boardState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(4.dp))
+            .border(1.dp, Color.LightGray, RoundedCornerShape(4.dp))
+    )
+}
+
+@Composable
+private fun FenStringCard(
+    fenString: String
+) {
+    val context = LocalContext.current
+
+    fun copyToClipboard(text: String) {
+        val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clipData = ClipData.newPlainText("FEN String", text)
+        clipboardManager.setPrimaryClip(clipData)
+        Toast.makeText(context, "FEN copied to clipboard", Toast.LENGTH_SHORT).show()
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        shape = RoundedCornerShape(4.dp),
+        elevation = CardDefaults.cardElevation(3.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Action Buttons
-                Button(
-                    onClick = onAnalyseClick,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4D4B6E)
-                    )
+                Text(
+                    text = "FEN String",
+                    fontSize = 16.sp,
+                    color = Color.DarkGray
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = fenString,
+                    fontSize = 14.sp,
+                    color = Color.DarkGray,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(
+                    onClick = { copyToClipboard(fenString) },
+                    modifier = Modifier.size(24.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = "Analyse Position Icon",
-                        tint = Color.White
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = "Analyse Position",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedButton(
-                    onClick = onEditBoardClick, // TODO: add edit board screen
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFF4D4B6E)
-                    ),
-                    border = ButtonDefaults.outlinedButtonBorder.copy(
-                        brush = androidx.compose.ui.graphics.SolidColor(Color(0xFF4D4B6E))
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit Board Icon",
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "Copy FEN",
                         tint = Color(0xFF4D4B6E)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Edit Board",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF4D4B6E)
                     )
                 }
             }
         }
     }
-    if (!analysisComplete) {
-        LoadingOverlay()
+}
+
+@Composable
+private fun CastlingAndTurnControlCard(
+    whiteKingSide: Boolean,
+    onWhiteKingSideChange: (Boolean) -> Unit,
+    whiteQueenSide: Boolean,
+    onWhiteQueenSideChange: (Boolean) -> Unit,
+    blackKingSide: Boolean,
+    onBlackKingSideChange: (Boolean) -> Unit,
+    blackQueenSide: Boolean,
+    onBlackQueenSideChange: (Boolean) -> Unit,
+    activePlayer: Char,
+    onActivePlayerChange: (Char) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        shape = RoundedCornerShape(4.dp),
+        elevation = CardDefaults.cardElevation(3.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            // Castling Section
+            CastlingSection(
+                whiteKingSide = whiteKingSide,
+                onWhiteKingSideChange = onWhiteKingSideChange,
+                whiteQueenSide = whiteQueenSide,
+                onWhiteQueenSideChange = onWhiteQueenSideChange,
+                blackKingSide = blackKingSide,
+                onBlackKingSideChange = onBlackKingSideChange,
+                blackQueenSide = blackQueenSide,
+                onBlackQueenSideChange = onBlackQueenSideChange
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Turn Toggle Section
+            ActivePlayerSection(
+                activePlayer = activePlayer,
+                onActivePlayerChange = onActivePlayerChange
+            )
+        }
     }
 }
+
+@Composable
+private fun CastlingSection(
+    whiteKingSide: Boolean,
+    onWhiteKingSideChange: (Boolean) -> Unit,
+    whiteQueenSide: Boolean,
+    onWhiteQueenSideChange: (Boolean) -> Unit,
+    blackKingSide: Boolean,
+    onBlackKingSideChange: (Boolean) -> Unit,
+    blackQueenSide: Boolean,
+    onBlackQueenSideChange: (Boolean) -> Unit
+) {
+    Text(
+        text = "Castling",
+        fontSize = 16.sp,
+        fontWeight = FontWeight.Medium,
+        color = Color.DarkGray,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 10.dp),
+        textAlign = TextAlign.Center
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // White Section castling
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = "White",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.DarkGray,
+                modifier = Modifier.padding(bottom = 3.dp)
+            )
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CastlingCheckbox(
+                    label = "0-0",
+                    checked = whiteKingSide,
+                    onCheckedChange = onWhiteKingSideChange
+                )
+
+                CastlingCheckbox(
+                    label = "0-0-0",
+                    checked = whiteQueenSide,
+                    onCheckedChange = onWhiteQueenSideChange
+                )
+            }
+        }
+
+        // Black Section castling
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = "Black",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.DarkGray,
+                modifier = Modifier.padding(bottom = 3.dp)
+            )
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CastlingCheckbox(
+                    label = "0-0",
+                    checked = blackKingSide,
+                    onCheckedChange = onBlackKingSideChange
+                )
+
+                CastlingCheckbox(
+                    label = "0-0-0",
+                    checked = blackQueenSide,
+                    onCheckedChange = onBlackQueenSideChange
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CastlingCheckbox(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = Color.DarkGray,
+            modifier = Modifier.padding(bottom = 3.dp)
+        )
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = CheckboxDefaults.colors(
+                checkedColor = Color(0xFF4D4B6E)
+            ),
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+private fun ActivePlayerSection(
+    activePlayer: Char,
+    onActivePlayerChange: (Char) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Active Player",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color.DarkGray
+        )
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (activePlayer == 'w') "White" else "Black",
+                fontSize = 14.sp,
+                color = Color.DarkGray,
+                modifier = Modifier.padding(end = 4.dp)
+            )
+
+            Switch(
+                checked = activePlayer == 'b',
+                onCheckedChange = { onActivePlayerChange(if (it) 'b' else 'w') },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = Color(0xFF4D4B6E),
+                    uncheckedThumbColor = Color.White,
+                    uncheckedTrackColor = Color.Gray
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun ActionButtons(
+    onAnalyseClick: () -> Unit,
+    onEditBoardClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Button(
+            onClick = onAnalyseClick,
+            modifier = Modifier
+                .weight(1f)
+                .height(56.dp),
+            shape = RoundedCornerShape(28.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF4D4B6E)
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = "Analyse Position Icon",
+                tint = Color.White
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = "Analyse Position",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White
+            )
+        }
+
+        OutlinedButton(
+            onClick = onEditBoardClick,
+            modifier = Modifier
+                .weight(1f)
+                .height(56.dp),
+            shape = RoundedCornerShape(28.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = Color(0xFF4D4B6E)
+            ),
+            border = ButtonDefaults.outlinedButtonBorder.copy(
+                brush = androidx.compose.ui.graphics.SolidColor(Color(0xFF4D4B6E))
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Default.Edit,
+                contentDescription = "Edit Board Icon",
+                tint = Color(0xFF4D4B6E)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Edit Board",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF4D4B6E)
+            )
+        }
+    }
+}
+
 @Composable
 fun LoadingOverlay() {
     Box(
@@ -500,7 +571,6 @@ fun LoadingOverlay() {
 }
 
 suspend fun serverAnalysis(onComplete: (String) -> Unit) {
-
     val detectedFen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR"
     onComplete(detectedFen)
 }
@@ -599,7 +669,6 @@ fun parseFenToBoard(fen: String): Array<Array<Char>> {
 
     return board
 }
-
 
 @Composable
 fun SimplePieceDrawing(piece: Char, color: Color) {
