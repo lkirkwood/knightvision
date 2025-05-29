@@ -134,8 +134,16 @@ fun BoardDetectionScreen(
         Toast.makeText(context, "FEN copied to clipboard", Toast.LENGTH_SHORT).show()
     }
 
-    LaunchedEffect(boardStateModel.boardState, boardEvalModel.analysisComplete, stockfishReady) {
-        boardArray = parseFenToBoard(boardStateModel.boardState.boardFen)
+    var lastFen by rememberSaveable { mutableStateOf(boardStateModel.boardState.boardFen) }
+    LaunchedEffect(boardStateModel.boardState.boardFen) {
+        if (boardStateModel.boardState.boardFen != lastFen) {
+            lastFen = boardStateModel.boardState.boardFen
+            boardArray = parseFenToBoard(boardStateModel.boardState.boardFen)
+            boardEvalModel.analysisComplete = false
+        }
+    }
+
+    LaunchedEffect(stockfishReady, boardEvalModel.analysisComplete) {
         if (stockfishReady && !boardEvalModel.analysisComplete) {
             val outputLines = searchPosition(
                 boardStateModel.boardState.boardFen,
@@ -169,8 +177,6 @@ fun BoardDetectionScreen(
             boardEvalModel.analysisComplete = true
         }
     }
-
-
 
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) {
         Column(
