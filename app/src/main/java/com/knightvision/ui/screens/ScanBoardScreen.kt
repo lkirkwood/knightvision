@@ -89,6 +89,7 @@ class BoardImageViewModel : ViewModel() {
     var boardImage by mutableStateOf<Bitmap?>(null)
     var orientation by mutableStateOf<String>("left")
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScanBoardTopAppBar(onBackClick: () -> Unit) {
@@ -116,6 +117,7 @@ fun ScanBoardTopAppBar(onBackClick: () -> Unit) {
         )
     )
 }
+
 @Composable
 fun ScanBoardScreen(
     onBackClick: () -> Unit = {},

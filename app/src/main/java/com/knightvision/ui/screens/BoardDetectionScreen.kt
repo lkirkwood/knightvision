@@ -129,7 +129,7 @@ fun BoardDetectionScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Position Information Card
-                FenStringCard(fenString = boardEvalModel.boardState.boardFen)
+                FenStringCard(boardEvalModel.boardState)
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -137,8 +137,12 @@ fun BoardDetectionScreen(
                 CastlingAndTurnControlCard(
                     parseFenFlags(boardEvalModel.boardState.boardFen),
                     { flags ->
-                        boardEvalModel.boardState.boardFen = updateFenFlags(
-                            boardEvalModel.boardState.boardFen, flags)
+                        val newFen = updateFenFlags(boardEvalModel.boardState.boardFen, flags)
+                        boardEvalModel.boardState = BoardState(
+                            newFen,
+                            boardEvalModel.boardState.openingName,
+                            boardEvalModel.boardState.openingMoves
+                        )
                         boardEvalModel.setComplete(false)
                     }
                 )
@@ -183,7 +187,7 @@ private fun BoardDetectionTopAppBar(
 }
 
 @Composable
-private fun BoardDisplay(
+fun BoardDisplay(
     boardArray: Array<Array<Char>>
 ) {
     ChessBoard(
@@ -197,8 +201,8 @@ private fun BoardDisplay(
 }
 
 @Composable
-private fun FenStringCard(
-    fenString: String
+fun FenStringCard(
+    boardState: BoardState
 ) {
     val context = LocalContext.current
 
@@ -233,7 +237,7 @@ private fun FenStringCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = fenString,
+                    text = boardState.boardFen,
                     fontSize = 14.sp,
                     color = Color.DarkGray,
                     maxLines = 1,
@@ -241,7 +245,7 @@ private fun FenStringCard(
                 )
 
                 IconButton(
-                    onClick = { copyToClipboard(context, fenString) },
+                    onClick = { copyToClipboard(context, boardState.boardFen) },
                     modifier = Modifier.size(24.dp)
                 ) {
                     Icon(
