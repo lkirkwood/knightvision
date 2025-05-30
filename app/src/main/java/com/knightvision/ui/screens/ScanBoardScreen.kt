@@ -238,14 +238,13 @@ fun ScanBoardScreen(
                     fontWeight = FontWeight.Bold
                 )
 
-
                 val orientations = listOf("Left", "Top", "Right", "Bottom")
                 var orientationSlider by remember { mutableStateOf(0f) }
                 Slider(
                     value = orientationSlider,
                     onValueChange = {
                         orientationSlider = it
-                        val index = (it * 3).toInt().coerceIn(0, 3)
+                        val index = it.toInt().coerceIn(0, 3)
                         viewModel.orientation = orientations[index]
                     },
                     valueRange = 0f..4f,
