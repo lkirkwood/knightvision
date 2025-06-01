@@ -85,6 +85,7 @@ fun WelcomeScreen(
 
             UploadImage(
                 onUpload = { bitmap ->
+                    boardImgModel.orientation = "left"
                     boardImgModel.boardImage = bitmap
                     onUploadImage()
                 }

@@ -86,6 +86,7 @@ fun BoardDetectionScreen(
                     boardImageModel.orientation
                 )
                 detectionComplete = true
+                boardImageModel.orientation = "left"
             } catch (exc : Exception) {
                 detectionComplete = true
                 snackbarHostState.showSnackbar("Failed to extract board position from image.")
